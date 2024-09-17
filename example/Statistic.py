@@ -17,11 +17,11 @@ def magnitude(R):
 def magnitude_variance(R):
     magnitudes = norm(R, axis=1)
     mean_mag = np.mean(magnitudes)
-    var_mag = np.sqrt( np.mean( magnitudes - mean_mag ) )
+    var_mag = np.sqrt(np.mean((magnitudes - mean_mag) ** 2))
     max_mag = np.max(magnitudes)
     min_mag = np.min(magnitudes)
     
-    normalized_var_mag = var_mag / (max_mag - min_mag)  
+    normalized_var_mag = var_mag / (max_mag - min_mag)  if max_mag != min_mag else 0
     return normalized_var_mag
 
 # Concentricity
@@ -43,7 +43,7 @@ def mean_concentricity(R):
 def concentricity_variance(R):
     cos_sims = concentricity(R)
     mean_cos_sim = np.mean(cos_sims)    # Todo: cos_sims 是否要加 2范数 ? Magnitude 同
-    var_conc = np.sqrt(np.mean(cos_sims - mean_cos_sim))
+    var_conc = np.sqrt(np.mean((cos_sims - mean_cos_sim) ** 2))
     max_cos_sim = np.max(cos_sims)
     min_cos_sim = np.min(cos_sims)
     
