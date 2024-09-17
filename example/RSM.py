@@ -1,5 +1,6 @@
 import numpy as np
-from numpy.linalg import norm
+from numpy.linalg import norm, inv, eigvals
+from scipy.linalg import sqrtm
 from scipy.stats import pearsonr
 
 def cosine_similarity(vec1, vec2):
@@ -148,6 +149,167 @@ def cal_distance_correlation(X, Y):
     dCor = dCov_XY / np.sqrt(dCov_XX * dCov_YY)
     return dCor
 
+# Normalized Bures Similarity
+def cal_bures_similarity(R, R_prime, epsilon=1e-6):
+    """
+    计算两个表示的 Normalized Bures Similarity (NBS)
+    """
+    K = R @ np.transpose(R) # 计算线性核
+    K_prime = R_prime @ np.transpose(R_prime)
+
+    # 正则化矩阵以保证数值稳定性
+    K += epsilon * np.eye(K.shape[0])
+    K_prime += epsilon * np.eye(K_prime.shape[0])
+
+    # 计算矩阵的开方
+    K_sqrt = sqrtm(K)
+    
+    # 计算 K_sqrt * K_prime * K_sqrt
+    K_sqrt_K_prime = np.dot(K_sqrt, np.dot(K_prime, K_sqrt))
+    
+    # 计算 trace(sqrt(K_sqrt * K_prime * K_sqrt))
+    trace_term = np.trace(sqrtm(K_sqrt_K_prime))
+    
+    # 计算 NBS 相似度
+    nbs_similarity = trace_term / np.sqrt(np.trace(K) * np.trace(K_prime))
+    
+    return nbs_similarity
+
+# Eigenspace Overlap Score
+def cal_eigenspace_overlap_score(X, Y, top_k=None):
+    """
+    计算两个表示矩阵的 Eigenspace Overlap Score
+    基于线性核来计算，并进行归一化。
+    
+    参数:
+    X, Y: 两个表示矩阵
+    top_k: 选择前 k 个特征向量进行比较，如果为 None，则比较所有特征向量
+    """
+    # 计算线性核矩阵
+    K_X = X @ np.transpose(X) 
+    K_Y = Y @ np.transpose(Y) 
+    
+    # 对线性核矩阵进行特征值分解
+    eigvals_X, eigvecs_X = np.linalg.eigh(K_X)
+    eigvals_Y, eigvecs_Y = np.linalg.eigh(K_Y)
+    
+    # 选择前 k 个特征向量进行比较
+    if top_k is not None:
+        eigvecs_X = eigvecs_X[:, -top_k:]  # 取前 k 个最大特征值对应的特征向量
+        eigvecs_Y = eigvecs_Y[:, -top_k:]   
+    
+    # 计算特征向量之间的内积矩阵 (夹角)
+    overlap_matrix = np.dot(eigvecs_X.T, eigvecs_Y)
+    
+    # 计算重叠得分：Frobenius 范数的平方
+    overlap_score = np.linalg.norm(overlap_matrix, ord='fro')**2
+    
+    # 获取最大维度 D 和 D'，用于归一化
+    max_rank = max(X.shape[0], Y.shape[0], X.shape[1], Y.shape[1])
+
+    # 归一化得分
+    normalized_overlap_score = overlap_score / max_rank
+    
+    return normalized_overlap_score
+
+# GLUP
+def cal_gulp_measure(R, R_prime, lambda_val=1e-3):
+    """
+    计算 GULP 度量 m^λ_GULP(R, R')
+    
+    参数:
+    R: 表示矩阵 R (n_samples, n_features)
+    R_prime: 表示矩阵 R' (n_samples, n_features)
+    lambda_val: 岭回归的正则化参数 λ
+    
+    返回:
+    GULP 度量
+    """
+    # 样本数量 N
+    N = R.shape[0]
+
+    # 计算协方差矩阵 S 和 S'
+    S = (1 / N) * np.dot(R.T, R)
+    S_prime = (1 / N) * np.dot(R_prime.T, R_prime)
+
+    # 正则化的协方差矩阵 S^(-λ) 和 S'^(-λ)
+    I_D = np.eye(S.shape[0])  # 单位矩阵
+    S_inv_lambda = inv(S + lambda_val * I_D)
+    S_prime_inv_lambda = inv(S_prime + lambda_val * I_D)
+
+    # 计算跨表示的协方差矩阵 S_{R, R'}
+    S_R_R_prime = (1 / N) * np.dot(R.T, R_prime)
+
+    # 计算 GULP 度量
+    term1 = np.trace(S_inv_lambda @ S @ S_inv_lambda @ S)
+    term2 = np.trace(S_prime_inv_lambda @ S_prime @ S_prime_inv_lambda @ S_prime)
+    term3 = 2 * np.trace(S_inv_lambda @ S_R_R_prime @ S_prime_inv_lambda @ S_R_R_prime.T)
+
+    gulp_score = np.sqrt(term1 + term2 - term3)
+    
+    return gulp_score
+
+def is_symmetric(matrix, tol=1e-8):
+    """
+    检查矩阵是否对称
+    """
+    return np.allclose(matrix, matrix.T, atol=tol)
+
+def is_positive_definite(matrix):
+    """
+    检查矩阵是否正定
+    """
+    eigenvalues = eigvals(matrix)
+    return np.all(eigenvalues > 0)
+
+# Riemannian Distance
+def cal_riemannian_distance(R, R_prime):
+    """
+    计算表示矩阵 R 和 R' 的 Riemannian Distance
+
+    参数:
+    R: 表示矩阵 R (n_samples, n_features)
+    R_prime: 表示矩阵 R' (n_samples, n_features)
+
+    返回:
+    Riemannian Distance 度量
+    """
+    # 获取维度 D
+    D = R.shape[1]
+    
+    # 计算协方差矩阵 S 和 S'
+    S = np.dot(R, R.T) / D
+    S_prime = np.dot(R_prime, R_prime.T) / D
+
+    # 检查 S 和 S_prime 是否对称
+    if not is_symmetric(S):
+        print("Warning: Matrix S is not symmetric!")
+        return -1
+    if not is_symmetric(S_prime):
+        print("Warning: Matrix S' is not symmetric!")
+        return -1
+
+    # 检查 S 和 S_prime 是否正定
+    if not is_positive_definite(S):
+        print("Warning: Matrix S is not positive definite!")
+        return -1
+    if not is_positive_definite(S_prime):
+        print("Warning: Matrix S' is not positive definite!")
+        return -1
+
+    # 计算 S^(-1) S'
+    S_inv = inv(S)
+    S_inv_S_prime = np.dot(S_inv, S_prime)
+
+    # 计算 S^(-1) S' 的特征值
+    eigenvalues = eigvals(S_inv_S_prime)
+
+    # 计算 Riemannian Distance
+    log_eigenvalues = np.log(eigenvalues)
+    riemannian_dist = np.sqrt(np.sum(log_eigenvalues**2))
+    
+    return riemannian_dist
+
 # 示例使用
 if __name__ == "__main__":
     # 定义两个简单的表示
@@ -178,3 +340,20 @@ if __name__ == "__main__":
     # 计算dCor距离相关性
     dcor_score = cal_distance_correlation(R, R_prime)
     print(f"Distance Correlation: {dcor_score}")
+
+    # 计算 Normalized Bures Similarity
+    nbs_score = cal_bures_similarity(R, R_prime)
+    print(f"Normalized Bures Similarity: {np.real(nbs_score)}")
+
+    # 计算 Eigenspace Overlap Score
+    eos_score = cal_eigenspace_overlap_score(R, R_prime)
+    print(f"Eigenspace Overlap Score (Normalized): {eos_score}")
+
+    # 计算 GULP 度量
+    gulp_score = cal_gulp_measure(R, R_prime)
+    print(f"GULP Measure: {gulp_score:.4f}")
+
+    # 计算 Riemannian Distance
+    riemann_dist = cal_riemannian_distance(R, R_prime)
+    print(f"Riemannian Distance: {riemann_dist:.4f}")
+    
