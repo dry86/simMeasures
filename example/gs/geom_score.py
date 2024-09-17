@@ -48,8 +48,8 @@ def rlts(X, L_0=64, gamma=None, i_max=100, n=1000):
     rlts = np.zeros((n, i_max))
     for i in range(n):
         rlts[i, :] = rlt(X, L_0, gamma, i_max)
-        # if i % 10 == 0:
-            # print('Done {}/{}'.format(i, n))
+        if i % 10 == 0:
+            print('Done {}/{}'.format(i, n))
     return rlts
 
 

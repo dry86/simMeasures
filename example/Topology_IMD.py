@@ -13,3 +13,4 @@ print('y0=beta(0.5, 0.5), shape=', y0.shape)
 
 print('MSID(x0, x1)', msid_score(x0, x1))
 print('MSID(x0, y0)', msid_score(x0, y0))
+

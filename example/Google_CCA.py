@@ -8,7 +8,6 @@ import gzip
 
 import cca_core
 
-import pwcca
 
 def _plot_helper(arr, xlabel, ylabel):
     plt.plot(arr, lw=2.0)
@@ -60,7 +59,7 @@ for nd in num_datapoints:
     print(np.mean(results["cca_coef1"]))
     # sresults.append(np.mean(results["cca_coef1"]))
 
-pwcca_mean, w, _ = pwcca.compute_pwcca(A_fake, A_fake, epsilon=1e-10)
+pwcca_mean, w, _ = compute_pwcca(A_fake, A_fake, epsilon=1e-10)
 
 print(f"pwcca_mean:{pwcca_mean}")
 

@@ -3,14 +3,14 @@ from getHiddenStates import load_model, get_hidden_states
 from scipy.linalg import orthogonal_procrustes
 import jsonlines
 
-'''
-计算 orthogonal_procrustes :
-给定形状相同的矩阵A和B, 求得: 
-①矩阵R, 该矩阵R是使得矩阵A经过变换后最接近矩阵B的正交矩阵; 
-②scale, 等于矩阵A^T B的奇异值之和
 
-'''
 def calculate_orthogonal_procrustes(matrix1, matrix2):
+    """
+    计算 orthogonal_procrustes :
+    给定形状相同的矩阵A和B, 求得: 
+    ①矩阵R, 该矩阵R是使得矩阵A经过变换后最接近矩阵B的正交矩阵; 
+    ②scale, 等于矩阵A^T B的奇异值之和
+    """
     # print(f"matrix1:\n {matrix1}")
     # print(f"matrix2:\n {matrix2}")
     R, sca = orthogonal_procrustes(matrix1, matrix2)

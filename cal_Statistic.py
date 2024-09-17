@@ -2,55 +2,48 @@ import torch
 from getHiddenStates import load_model, get_hidden_states
 import numpy as np
 import jsonlines
-from example import cca_core
+from example.Statistic import *
 
 
-def calculate_cca(acts1, acts2, idx):
+def calculate_Stat(acts1, acts2, idx):
     
     print(f"Layer {idx}, shape: {acts1.shape}:")
-    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
+    
+    # 计算 mag, var_mag
+    mag_1 = magnitude(acts1)
+    var_mag_1 = magnitude_variance(acts1)
 
-    b1 = np.random.randn(*acts1.shape)
-    b2 = np.random.randn(*acts2.shape)
-    baseline = cca_core.get_cca_similarity(b1, b2, epsilon=1e-6, verbose=False)
-    print("\tBaseline Mean CCA similarity", np.mean(baseline["cca_coef1"]))
-    print(f"\tMean CCA similarity: {np.mean(results["cca_coef1"])}")
+    print(f"\t{'Magnitude acts1':<30}: {mag_1}")
+    print(f"\t{'Magnitude Variance acts1':<30}: {var_mag_1}")
+
+    mag_2 = magnitude(acts2)
+    var_mag_2 = magnitude_variance(acts2)
+
+    print(f"\t{'Magnitude acts2':<30}: {mag_2}")
+    print(f"\t{'Magnitude Variance acts2':<30}: {var_mag_2}")
 
 
-    # Results using SVCCA keeping 20 dims
+    # 计算 conc, var_conc
+    mean_conc_1 = mean_concentricity(acts1)
+    var_conc_1 = concentricity_variance(acts1)
 
-    # Mean subtract activations
-    cacts1 = acts1 - np.mean(acts1, axis=1, keepdims=True)
-    cacts2 = acts2 - np.mean(acts2, axis=1, keepdims=True)
+    print(f"\t{'Mean Concentricity acts1':<30}: {mean_conc_1}")
+    print(f"\t{'Concentricity Variance acts1':<30}: {var_conc_1}")
 
-    # Perform SVD
-    U1, s1, V1 = np.linalg.svd(cacts1, full_matrices=False)
-    U2, s2, V2 = np.linalg.svd(cacts2, full_matrices=False)
+    mean_conc_2 = mean_concentricity(acts2)
+    var_conc_2 = concentricity_variance(acts2)
 
-    svacts1 = np.dot(s1[:20]*np.eye(20), V1[:20])
-    svacts2 = np.dot(s2[:20]*np.eye(20), V2[:20])
+    print(f"\t{'Mean Concentricity acts2':<30}: {mean_conc_2}")
+    print(f"\t{'Concentricity Variance acts2':<30}: {var_conc_2}")
 
-    svcca_results = cca_core.get_cca_similarity(svacts1, svacts2, epsilon=1e-6, verbose=False)
 
-    # Mean subtract baseline activations
-    cb1 = b1 - np.mean(b1, axis=0, keepdims=True)
-    cb2 = b2 - np.mean(b2, axis=0, keepdims=True)
+    # 计算 uniformity
+    uniformity_value_1 = uniformity(acts1, t=1e-6)
+    print(f"\t{'Uniformity acts1':<30}: {uniformity_value_1}")
 
-    # Perform SVD
-    Ub1, sb1, Vb1 = np.linalg.svd(cb1, full_matrices=False)
-    Ub2, sb2, Vb2 = np.linalg.svd(cb2, full_matrices=False)
+    uniformity_value_2 = uniformity(acts2, t=1e-6)
+    print(f"\t{'Uniformity acts2':<30}: {uniformity_value_2}")
 
-    svb1 = np.dot(sb1[:20]*np.eye(20), Vb1[:20])
-    svb2 = np.dot(sb2[:20]*np.eye(20), Vb2[:20])
-
-    svcca_baseline = cca_core.get_cca_similarity(svb1, svb2, epsilon=1e-6, verbose=False)
-    print("\tBaseline SVCCA similarity: ", np.mean(svcca_baseline["cca_coef1"]), 
-          "\n\tSVCCA similarity: ", np.mean(svcca_results["cca_coef1"]))
-
-    pwcca_mean, w, _ = cca_core.compute_pwcca(acts1, acts2, epsilon=1e-6)
-    pwcca_baseline, wb, _ = cca_core.compute_pwcca(b1, b2, epsilon=1e-6)
-    print("\tBaseline PWCCA similarity: ", pwcca_baseline, 
-          "\n\tPWCCA similarity: ", pwcca_mean)
 
 
 # 指定GPU设备：
@@ -91,7 +84,7 @@ with jsonlines.open(file_path) as reader:
             acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
             acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
             # print(f"hidden layer shape: {acts1.shape}")
-            calculate_cca(acts1, acts2, i)
+            calculate_Stat(acts1, acts2, i)
             
 
         # 输出所有层的CCA分数后，生成Prompt的模型输出

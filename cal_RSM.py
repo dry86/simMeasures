@@ -6,7 +6,7 @@ import jsonlines
 from example.RSM import cal_RSM_Norm_Difference, cal_RSA, cal_cka, cal_distance_correlation, cal_bures_similarity, cal_eigenspace_overlap_score, cal_gulp_measure, cal_riemannian_distance
 
 def calculate_RSM(acts1, acts2, idx):
-    print(f"Layer {idx} , shape: {acts1.shape} :")
+    print(f"Layer {idx}, shape: {acts1.shape}:")
     # 计算rsm相似度
     similarity_rsm = cal_RSM_Norm_Difference(acts1, acts2)
     print(f"\t{'Representational Similarity (Frobenius norm difference)':<60}: {similarity_rsm:.16f}")
