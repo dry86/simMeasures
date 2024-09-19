@@ -20,21 +20,11 @@ def calculate_codebleu(ref_texts, hyp_texts, lang, params='0.25,0.25,0.25,0.25')
     
     alpha, beta, gamma, theta = [float(x) for x in params.split(',')]
 
-    # 直接使用传入的参考代码和生成代码
-    pre_references = [refs.strip().splitlines() for refs in ref_texts]
-    hypothesis = [hyp.strip() for hyp in hyp_texts]
+    # 将单个代码段转为列表形式以进行后续处理
+    references = [[ref_texts.strip()]]
+    hypothesis = [hyp_texts.strip()]
 
-    # for i in range(len(pre_references)):
-    #     assert len(hypothesis) == len(pre_references[i])
-
-    references = []
-    for i in range(len(hypothesis)):
-        ref_for_instance = []
-        for j in range(len(pre_references)):
-            ref_for_instance.append(pre_references[j][i])
-        references.append(ref_for_instance)
-
-    # assert len(references) == len(pre_references) * len(hypothesis)
+    assert len(hypothesis) == len(references)
 
     # 计算 ngram match (BLEU)
     tokenized_hyps = [x.split() for x in hypothesis]
@@ -43,7 +33,7 @@ def calculate_codebleu(ref_texts, hyp_texts, lang, params='0.25,0.25,0.25,0.25')
     ngram_match_score = bleu.corpus_bleu(tokenized_refs, tokenized_hyps)
 
     # 计算 weighted ngram match
-    keywords = [x.strip() for x in open('keywords/' + lang + '.txt', 'r', encoding='utf-8').readlines()]
+    keywords = [x.strip() for x in open('/newdisk/public/wws/simMeasures/CodeBLEU/keywords/' + lang + '.txt', 'r', encoding='utf-8').readlines()]
 
     def make_weights(reference_tokens, key_word_list):
         return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
@@ -76,8 +66,8 @@ def calculate_codebleu(ref_texts, hyp_texts, lang, params='0.25,0.25,0.25,0.25')
 if __name__ == "__main__":
 
     # 示例用法
-    ref_texts = ["def add(a, b):\n    return a + b"]
-    hyp_texts = ["def add(a, b):\n    return a + b"]
+    ref_texts = "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n"
+    hyp_texts = "def add(a, b):\n    return a + b"
     lang = 'python'
     params = '0.25,0.25,0.25,0.25'
 
