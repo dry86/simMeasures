@@ -1,6 +1,6 @@
 import os
 import sys
-# 将CodeBLEU目录添加到系统路径中
+# # 将CodeBLEU目录添加到系统路径中
 sys.path.append(os.path.abspath("/newdisk/public/wws/simMeasures/CodeBLEU"))
 
 from CodeBLEU import bleu

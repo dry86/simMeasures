@@ -26,3 +26,9 @@ def get_hidden_states(model, tokenizer, input_text, device):
     hidden_states = outputs.hidden_states
     return [layer_hidden_state.detach().cpu().numpy() for layer_hidden_state in hidden_states]
 
+# 获取logits输出
+def get_logits(model, tokenizer, input_text, device):
+    inputs = tokenizer(input_text, return_tensors='pt').to(device)  # 将输入移动到指定的GPU上
+    outputs = model(**inputs)
+
+    return outputs.logits

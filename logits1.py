@@ -10,7 +10,7 @@ model = AutoModelForCausalLM.from_pretrained(model_path,
                                              torch_dtype=torch.float32)
 
 # 将模型转移到指定的 GPU 设备 cuda:3
-device = torch.device("cuda:3")
+device = torch.device("cuda:1")
 model.to(device)
 
 # 模型设置为评估模式
