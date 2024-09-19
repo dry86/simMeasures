@@ -62,6 +62,17 @@ def uniformity(R, t=2):
     uniformity_value = np.log(np.sum(exp_term) / (N ** 2))
     return uniformity_value
 
+# 计算Uniformity
+def uniformity2(R, t=2):
+    N = R.shape[0]
+    # 计算每对实例的欧氏距离
+    dist_matrix = np.linalg.norm(R[:, np.newaxis] - R[np.newaxis, :], axis=-1) ** 2
+    # 计算公式中的指数项
+    exp_term = np.exp(-t * dist_matrix)
+    # 计算uniformity值
+    uniformity_value = np.log(np.sum(exp_term) / (N ** 2))
+    return uniformity_value
+
 
 # 示例使用
 if __name__ == "__main__":
