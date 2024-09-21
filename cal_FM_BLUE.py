@@ -96,6 +96,11 @@ def calculate_PBM_codeBLEU(pred1, pred2, ref):
 
 # HardPredication Disagreement
 def cal_fm_disagreement(tensor1, tensor2):
+
+    # 确保两个tensor在相同的设备上
+    if tensor1.device != tensor2.device:
+        tensor2 = tensor2.to(tensor1.device)  # 将tensor2移动到tensor1所在的设备
+
     # 获取两个tensor的长度，并取最小值，以较短的长度为准
     min_length = min(tensor1.size(1), tensor2.size(1))
     
@@ -110,7 +115,7 @@ def cal_fm_disagreement(tensor1, tensor2):
     return disagreement
 
 # 指定GPU设备：
-device_model1 = torch.device("cuda:2")  # 第x块GPU
+device_model1 = torch.device("cuda:0")  # 第x块GPU
 device_model2 = torch.device("cuda:1")  # 第y块GPU
 
 # 设置模型和输入
@@ -136,7 +141,7 @@ with jsonlines.open(file_path) as reader:
         # 输出所有层的CCA分数后，生成Prompt的模型输出
         inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
         output_model1 = model1.generate(**inputs, max_length=512)
-        print(output_model1)
+        # print(output_model1)
         generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
         
         inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
