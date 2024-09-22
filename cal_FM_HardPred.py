@@ -5,32 +5,6 @@ import jsonlines
 from example.Topology import *
 import re
 
-def cal_norm_of_soft_prediction_diff(O, O_prime):
-    """
-    计算两个输出O和O'之间的Norm of Soft Prediction Difference
-    O和O'为两个模型的输出，形状为(N, C)，其中N是实例数，C是类数
-    """
-
-    # 获取两者的形状，确保两个张量在形状上相同
-    min_length = min(O.shape[2], O_prime.shape[2])
-
-    # 截取logits的最后一维，使得它们形状一致
-    O_trimmed = O[:, :, :min_length].detach().cpu().numpy()
-    O_prime_trimmed = O_prime[:, :, :min_length].detach().cpu().numpy()
-
-    # N = O.shape[0]
-    # # 确保两个tensor在相同的设备上
-    # if O_trimmed.device != O_prime_trimmed.device:
-    #     O_prime_trimmed = O_prime_trimmed.to(O_trimmed.device)  # 将tensor2移动到tensor1所在的设备
-    
-    # 计算每个实例对应的欧几里得距离
-    distances = np.linalg.norm(O_trimmed - O_prime_trimmed, axis=2)
-    
-    # 计算平均差异
-    m_pred_norm_diff = np.sum(distances) / (2 * O_trimmed.shape[0])
-    
-    return m_pred_norm_diff
-
 def mask_code_keywords(code: str) -> list:
     # 匹配 """ 注释的正则表达式
     comment_pattern = r'""".*?"""'
@@ -72,6 +46,8 @@ model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b
 model1, tokenizer1 = load_model(model_7b, device_model1)
 model2, tokenizer2 = load_model(model_7b_Python, device_model2)
 
+model1.eval()
+model2.eval()
 
 # 打开jsonl文件并遍历
 file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
@@ -84,35 +60,75 @@ with jsonlines.open(file_path) as reader:
         # prompt = "def fibonacci("
         print(f"Task ID: {task_id}, Prompt: \n{prompt}")
         ground_truth_code = prompt + refer
-               
+        # 
         masked_results = mask_code_keywords(ground_truth_code)
         # 输出每次 mask 掉后的结果
         for idx, masked_code in enumerate(masked_results, 1):
             print(f"Masked Version {idx}:\n{masked_code}\n")
 
-            
             # 将 "<mask>" 替换为模型能够识别的特殊 token，比如 "<unk>" 或者 "<mask>"，具体取决于模型支持的 token
-            masked_input = masked_code.replace("<mask>", "<unk>")  # 使用 <unk> 作为占位符
+            masked_input = masked_code.replace("<mask>", '<MASK>')  # 使用 <unk> 作为占位符
+
             inputs1 = tokenizer1(masked_input, return_tensors='pt').to(device_model1)
             # 找到 <mask> 的位置
-            mask_token_index = torch.where(inputs1.input_ids == tokenizer1.convert_tokens_to_ids("<unk>"))[1]
+            mask_token_index1 = torch.where(inputs1.input_ids == tokenizer1.unk_token_id)[1]
             with torch.no_grad():
                 output_model1 = model1(**inputs1)
             # 获取 mask 位置的 logits
-            mask_logits = output_model1.logits[0, mask_token_index, :]
+            mask_logits1 = output_model1.logits[0, mask_token_index1, :]
+            # 获取 mask 的概率矩阵
+            probabilities_model1 = torch.softmax(mask_logits1, dim=-1)
             # 获取预测的 token id
-            predicted_token_id = torch.argmax(mask_logits, dim=-1).item()
+            predicted_token_id1 = torch.argmax(mask_logits1, dim=-1).item()
             # 获取该 token id 对应的 token
-            predicted_token = tokenizer1.decode(predicted_token_id)
+            predicted_token1 = tokenizer1.decode(predicted_token_id1)
+            # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
+            # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
+            generated_token_ids1 = torch.argmax(output_model1.logits, dim=-1)
 
+            # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
+            generated_text1 = tokenizer1.decode(generated_token_ids1[0], skip_special_tokens=True)
+            # 打印生成的文本
+            print("Generated text1:", generated_text1)
 
-            inputs = tokenizer2(masked_code, return_tensors='pt').to(device_model2)
+            # 第二个模型进行相同的处理:
+            inputs2 = tokenizer2(masked_input, return_tensors='pt').to(device_model2)
             with torch.no_grad():
-                output_model2 = model2(**inputs)
-            logits_model2 = output_model2.logits
-            probabilities_model2 = torch.softmax(logits_model2, dim=-1)
+                output_model2 = model2(**inputs2)
+            # 找到 <mask> 的位置
+            mask_token_index2 = torch.where(inputs2.input_ids == tokenizer2.unk_token_id)[1]   
+
+            # 获取 mask 位置的 logits
+            mask_logits2 = output_model2.logits[0, mask_token_index2, :]
+            # 获取 mask 的概率矩阵
+            probabilities_model2 = torch.softmax(mask_logits2, dim=-1)
+            # 获取预测的 token id
+            predicted_token_id2 = torch.argmax(mask_logits2, dim=-1).item()
+            # 获取该 token id 对应的 token
+            predicted_token2 = tokenizer2.decode(predicted_token_id2)
+
+            # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
+            # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
+            generated_token_ids2 = torch.argmax(output_model2.logits, dim=-1)
+
+            # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
+            generated_text2 = tokenizer2.decode(generated_token_ids2[0], skip_special_tokens=True)
+            # 打印生成的文本
+            print("Generated text2:", generated_text2)
+
+            
+            # 假设使用 generate() 生成了一个序列
+            with torch.no_grad():
+                generated_token_ids21 = model2.generate(**inputs2, max_length=512)
+
+            # 直接解码生成的 token ids
+            generated_text21 = tokenizer2.decode(generated_token_ids21[0], skip_special_tokens=True)
+
+            # 打印生成的文本
+            print("Generated text21:", generated_text21)
 
 
+            
 
 
 
