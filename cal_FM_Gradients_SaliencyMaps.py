@@ -5,7 +5,7 @@ import jsonlines
 from scipy.spatial.distance import cosine
 import math
 # 设置打印选项来显示所有元素
-torch.set_printoptions(threshold=torch.inf)
+# torch.set_printoptions(threshold=torch.inf)
 
 def compute_saliency_map(model, inputs):
     """
@@ -52,6 +52,9 @@ def compute_saliency_map(model, inputs):
     for hidden_state in hidden_states:
         # 如果 all_tokens=True，计算所有 token 的梯度
         saliency_map = hidden_state[0].grad
+        # 确保张量在 CPU 上并转换为 NumPy 数组
+        if saliency_map is not None:  # 检查是否存在梯度
+            saliency_map = saliency_map.cpu().numpy().astype(np.float64)  # 转换为 NumPy 数组
         saliency_maps.append(saliency_map)
 
     # 移除 hooks
@@ -73,9 +76,9 @@ def cosine_similarity(v1, v2):
     norm_v2 = np.linalg.norm(v2)
 
     # # 检查是否有零向量，防止除以零的情况
-    if norm_v1 < 1e-8 or norm_v2 < 1e-8:
-        print("find NaN 1e-8")
-        return 0.0  # 或者返回 np.nan，根据需求
+    # if norm_v1 < 1e-8 or norm_v2 < 1e-8:
+    #     print("find NaN 1e-8")
+    #     return 0.0  # 或者返回 np.nan，根据需求
 
     # 手动计算余弦相似度
     cos_sim = dot_product / (norm_v1 * norm_v2)
@@ -93,7 +96,6 @@ def cosine_similarity(v1, v2):
 
     return cos_sim
 
-
 def compute_layer_token_similarity(grad1, grad2):
     """
     计算两个隐藏层的每个 token 梯度的余弦相似度。
@@ -108,11 +110,11 @@ def compute_layer_token_similarity(grad1, grad2):
     similarities = []
     
     # 对每个 token 计算余弦相似度
-    for token_idx in range(seq_len):
+    for token_idx in range(seq_len-1):
         v1 = grad1[:, token_idx, :].flatten()  # 取出模型1在该token位置的梯度
         v2 = grad2[:, token_idx, :].flatten()  # 取出模型2在该token位置的梯度
-        if token_idx == 132:
-            print("132")
+        # if token_idx == 132:
+        #     print("132")
         sim = cosine_similarity(v1, v2)
         similarities.append(sim)
     
@@ -180,20 +182,17 @@ device_model2 = torch.device("cuda:1")  # 第y块GPU
 
 # 设置模型和输入
 model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
+model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
 
 model1, tokenizer1 = load_model(model_7b, device_model1)
 model2, tokenizer2 = load_model(model_7b_Python, device_model2)
 
 model1.half()
 model2.half()
-# model2 = model1
-# tokenizer2 = tokenizer1
 
 # 切换到evaluation模式
 # model1.eval()
 # model2.eval()
-
 
 # 打开jsonl文件并遍历
 file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
