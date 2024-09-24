@@ -54,7 +54,7 @@ def compute_saliency_map(model, inputs):
         saliency_map = hidden_state[0].grad
         # 确保张量在 CPU 上并转换为 NumPy 数组
         if saliency_map is not None:  # 检查是否存在梯度
-            saliency_map = saliency_map.cpu().numpy().astype(np.float64)  # 转换为 NumPy 数组
+            saliency_map = saliency_map.cpu().numpy().astype(np.float64)  # 转换为 NumPy 数组   
         saliency_maps.append(saliency_map)
 
     # 移除 hooks
@@ -62,6 +62,8 @@ def compute_saliency_map(model, inputs):
         hook.remove()
 
     return saliency_maps
+
+precision_count = 0
 
 def cosine_similarity(v1, v2):
     """计算两个向量的余弦相似度"""
@@ -75,17 +77,24 @@ def cosine_similarity(v1, v2):
     norm_v1 = np.linalg.norm(v1)
     norm_v2 = np.linalg.norm(v2)
 
+
+    if (1e-10 < norm_v1 < 1e-8) or (1e-10 < norm_v2 < 1e-8):
+        print("find norm_v1_v2 1e-8 -10")
+
+    
     # # 检查是否有零向量，防止除以零的情况
-    # if norm_v1 < 1e-8 or norm_v2 < 1e-8:
-    #     print("find NaN 1e-8")
-    #     return 0.0  # 或者返回 np.nan，根据需求
+    if norm_v1 < 1e-10 or norm_v2 < 1e-10:
+        global precision_count
+        precision_count = precision_count + 1
+        # print("find norm_v1_v2 1e-10")
+        return 1.0  # 或者返回 np.nan，根据需求
 
     # 手动计算余弦相似度
     cos_sim = dot_product / (norm_v1 * norm_v2)
     
     # 检查 cos_sim 是否为有效值（非 NaN 或无穷大）
     if np.isnan(cos_sim):
-        print("find NaN")
+        print(f"find NaN")
         return 0.0  # 根据需求处理
     if np.isinf(cos_sim):
         print("find inf")
@@ -110,7 +119,7 @@ def compute_layer_token_similarity(grad1, grad2):
     similarities = []
     
     # 对每个 token 计算余弦相似度
-    for token_idx in range(seq_len-1):
+    for token_idx in range(seq_len):
         v1 = grad1[:, token_idx, :].flatten()  # 取出模型1在该token位置的梯度
         v2 = grad2[:, token_idx, :].flatten()  # 取出模型2在该token位置的梯度
         # if token_idx == 132:
@@ -197,13 +206,15 @@ model2.half()
 # 打开jsonl文件并遍历
 file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
 
+i = 0
 with jsonlines.open(file_path) as reader:
     for obj in reader:
         task_id = obj.get('task_id')
         prompt = obj.get('prompt')
         # refer = obj.get('canonical_solution')
         # prompt = "def fibonacci("
-        print(f"Task ID: {task_id}, Prompt: \n{prompt}")
+        print(f"Task ID: {task_id}")
+        # print(f"Prompt: \n{prompt}")
 
         inputs1 = tokenizer1(prompt, return_tensors='pt').to(device_model1)
 
@@ -211,7 +222,9 @@ with jsonlines.open(file_path) as reader:
 
         avg_similarity = compute_average_similarity(model1, model2, inputs1, inputs2)
         print(avg_similarity)
-
+        i = i + 1
+        if i == 10:
+            break
         
-
+print(f"global precision count:{precision_count}")
 
