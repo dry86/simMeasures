@@ -2,7 +2,6 @@ import torch
 from getHiddenStates import load_model, get_hidden_states
 import numpy as np
 import jsonlines
-from example.Topology import *
 import re
 
 def mask_code_keywords(code: str) -> list:
@@ -30,8 +29,15 @@ def mask_code_keywords(code: str) -> list:
     for word, (start, end) in non_comment_positions:
         # 生成代码副本并进行 mask
         new_code = list(code)  # 把代码转为字符列表，便于替换
-        new_code[start:end] = '<mask>'  # 替换当前位置的关键字为 <mask>
-        masked_versions.append("".join(new_code))
+        new_code[start:end] = '<MASK>'  # 替换当前位置的关键字为 <MASK>
+        # masked_versions.append("".join(new_code))
+        # 截断<MASK>之后的部分
+        truncated_code = "".join(new_code[:end])
+
+        # 将截断后的版本加入到结果列表
+        masked_versions.append(truncated_code)
+
+        
 
     return masked_versions
 
@@ -57,66 +63,71 @@ with jsonlines.open(file_path) as reader:
         task_id = obj.get('task_id')
         prompt = obj.get('prompt')
         refer = obj.get('canonical_solution')
-        # prompt = "def fibonacci("
         print(f"Task ID: {task_id}, Prompt: \n{prompt}")
         ground_truth_code = prompt + refer
-        # 
         masked_results = mask_code_keywords(ground_truth_code)
+        prompt = "\n# Continue the code after <MASK>:"
+        masked_results = [result + prompt for result in masked_results]
         # 输出每次 mask 掉后的结果
         for idx, masked_code in enumerate(masked_results, 1):
             print(f"Masked Version {idx}:\n{masked_code}\n")
 
             # 将 "<mask>" 替换为模型能够识别的特殊 token，比如 "<unk>" 或者 "<mask>"，具体取决于模型支持的 token
-            masked_input = masked_code.replace("<mask>", '<MASK>')  # 使用 <unk> 作为占位符
+            # masked_input = masked_code.replace("<mask>", '<MASK>')  # 使用 <unk> 作为占位符
 
-            inputs1 = tokenizer1(masked_input, return_tensors='pt').to(device_model1)
+            # inputs1 = tokenizer1(masked_code, return_tensors='pt').to(device_model1)
+            # with torch.no_grad():
+            #     output_model1 = model1(**inputs1)
+            # mask_logits = output_model1.logits
+            # predicted_token_id = torch.argmax(mask_logits, dim=-1).item()
+            # predicted_token = tokenizer1.decode(predicted_token_id)
+
+            inputs1 = tokenizer1(masked_code, return_tensors='pt').to(device_model1)
             # 找到 <mask> 的位置
-            mask_token_index1 = torch.where(inputs1.input_ids == tokenizer1.unk_token_id)[1]
+            mask_token_index1 = torch.where(inputs1.input_ids == tokenizer1.convert_tokens_to_ids("<MASK>"))[1]
             with torch.no_grad():
                 output_model1 = model1(**inputs1)
-            # 获取 mask 位置的 logits
-            mask_logits1 = output_model1.logits[0, mask_token_index1, :]
-            # 获取 mask 的概率矩阵
-            probabilities_model1 = torch.softmax(mask_logits1, dim=-1)
-            # 获取预测的 token id
-            predicted_token_id1 = torch.argmax(mask_logits1, dim=-1).item()
-            # 获取该 token id 对应的 token
-            predicted_token1 = tokenizer1.decode(predicted_token_id1)
+            # # 获取 mask 位置的 logits
+            # mask_logits1 = output_model1.logits[0, mask_token_index1, :]
+            # # 获取 mask 的概率矩阵
+            # probabilities_model1 = torch.softmax(mask_logits1, dim=-1)
+            # # 获取预测的 token id
+            # predicted_token_id1 = torch.argmax(mask_logits1, dim=-1).item()
+            # # 获取该 token id 对应的 token
+            # predicted_token1 = tokenizer1.decode(predicted_token_id1)
             # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
-            # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
+            # 通常 output_model1 的 logits 可以通过 argmax 获取最可能的 token ids
             generated_token_ids1 = torch.argmax(output_model1.logits, dim=-1)
-
             # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
             generated_text1 = tokenizer1.decode(generated_token_ids1[0], skip_special_tokens=True)
             # 打印生成的文本
             print("Generated text1:", generated_text1)
 
+
             # 第二个模型进行相同的处理:
-            inputs2 = tokenizer2(masked_input, return_tensors='pt').to(device_model2)
-            with torch.no_grad():
-                output_model2 = model2(**inputs2)
-            # 找到 <mask> 的位置
-            mask_token_index2 = torch.where(inputs2.input_ids == tokenizer2.unk_token_id)[1]   
+            inputs2 = tokenizer2(masked_code, return_tensors='pt').to(device_model2)
+            # with torch.no_grad():
+            #     output_model2 = model2(**inputs2)
+            # # 找到 <mask> 的位置
+            # mask_token_index2 = torch.where(inputs2.input_ids == tokenizer2.convert_tokens_to_ids("<MASK>"))[1]   
 
-            # 获取 mask 位置的 logits
-            mask_logits2 = output_model2.logits[0, mask_token_index2, :]
-            # 获取 mask 的概率矩阵
-            probabilities_model2 = torch.softmax(mask_logits2, dim=-1)
-            # 获取预测的 token id
-            predicted_token_id2 = torch.argmax(mask_logits2, dim=-1).item()
-            # 获取该 token id 对应的 token
-            predicted_token2 = tokenizer2.decode(predicted_token_id2)
+            # # 获取 mask 位置的 logits
+            # mask_logits2 = output_model2.logits[0, mask_token_index2, :]
+            # # 获取 mask 的概率矩阵
+            # probabilities_model2 = torch.softmax(mask_logits2, dim=-1)
+            # # 获取预测的 token id
+            # predicted_token_id2 = torch.argmax(mask_logits2, dim=-1).item()
+            # # 获取该 token id 对应的 token
+            # predicted_token2 = tokenizer2.decode(predicted_token_id2)
+            # # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
+            # # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
+            # generated_token_ids2 = torch.argmax(output_model2.logits, dim=-1)
+            # # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
+            # generated_text2 = tokenizer2.decode(generated_token_ids2[0], skip_special_tokens=True)
+            # # 打印生成的文本
+            # print("Generated text2:", generated_text2)
 
-            # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
-            # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
-            generated_token_ids2 = torch.argmax(output_model2.logits, dim=-1)
 
-            # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
-            generated_text2 = tokenizer2.decode(generated_token_ids2[0], skip_special_tokens=True)
-            # 打印生成的文本
-            print("Generated text2:", generated_text2)
-
-            
             # 假设使用 generate() 生成了一个序列
             with torch.no_grad():
                 generated_token_ids21 = model2.generate(**inputs2, max_length=512)
