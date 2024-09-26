@@ -1,8 +1,6 @@
 import torch
 from getHiddenStates import load_model, get_hidden_states
 from sklearn.cross_decomposition import CCA
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import jsonlines
 
 
