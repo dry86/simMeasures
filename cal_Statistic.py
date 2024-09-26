@@ -2,26 +2,25 @@ import torch
 from getHiddenStates import load_model, get_hidden_states
 import numpy as np
 import jsonlines
-from example.Statistic import *
+from example.Statistic_matrix import *
 
 
-def calculate_Stat(acts1, acts2, idx):
+def calculate_Stat(acts1, acts2):
     
-    print(f"Layer {idx}, shape: {acts1.shape}:")
+    print(f"All layer, shape: {acts1.shape}:")
     
     # 计算 mag, var_mag
-    mag_1 = magnitude(acts1)
+    mag_1 = mean_magnitude(acts1)
     var_mag_1 = magnitude_variance(acts1)
 
     print(f"\t{'Magnitude acts1':<30}: {mag_1}")
     print(f"\t{'Magnitude Variance acts1':<30}: {var_mag_1}")
 
-    mag_2 = magnitude(acts2)
+    mag_2 = mean_magnitude(acts2)
     var_mag_2 = magnitude_variance(acts2)
 
     print(f"\t{'Magnitude acts2':<30}: {mag_2}")
     print(f"\t{'Magnitude Variance acts2':<30}: {var_mag_2}")
-
 
     # 计算 conc, var_conc
     mean_conc_1 = mean_concentricity(acts1)
@@ -38,13 +37,17 @@ def calculate_Stat(acts1, acts2, idx):
 
 
     # 计算 uniformity
-    uniformity_value_1 = uniformity(acts1, t=1e-6)
-    print(f"\t{'Uniformity acts1':<30}: {uniformity_value_1}")
+    uniformity_value_1 = uniformity_euclidean(acts1)
+    print(f"\t{'Uniformity euclidean acts1':<30}: {uniformity_value_1}")
 
-    uniformity_value_2 = uniformity(acts2, t=1e-6)
-    print(f"\t{'Uniformity acts2':<30}: {uniformity_value_2}")
+    uniformity_value_2 = uniformity_euclidean(acts2)
+    print(f"\t{'Uniformity euclidean acts2':<30}: {uniformity_value_2}")
 
+    uniformity_value_1 = uniformity_inner(acts1)
+    print(f"\t{'Uniformity inner acts1':<30}: {uniformity_value_1}")
 
+    uniformity_value_2 = uniformity_inner(acts2)
+    print(f"\t{'Uniformity inner acts2':<30}: {uniformity_value_2}")
 
 # 指定GPU设备：
 device_model1 = torch.device("cuda:0")  # 第x块GPU
@@ -76,31 +79,29 @@ with jsonlines.open(file_path) as reader:
 
         
         # 获取模型的总层数
-        num_layers = len(hidden_states_model1)
-
-        # 获取每一层的CCA相关性得分
+        # num_layers = len(hidden_states_model1)
         
-        for i in range(num_layers):
-            acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
-            acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
-            # print(f"hidden layer shape: {acts1.shape}")
-            calculate_Stat(acts1, acts2, i)
+        # for i in range(num_layers):
+        acts1 = hidden_states_model1.reshape(-1, hidden_states_model1.shape[-1])
+        acts2 = hidden_states_model2.reshape(-1, hidden_states_model2.shape[-1])
+        # print(f"hidden layer shape: {acts1.shape}")
+        calculate_Stat(acts1, acts2)
             
 
-        # 输出所有层的CCA分数后，生成Prompt的模型输出
-        inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
-        output_model1 = model1.generate(**inputs, max_length=512)
-        generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
         
-        inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
-        output_model2 = model2.generate(**inputs, max_length=512)
-        generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
+        # inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
+        # output_model1 = model1.generate(**inputs, max_length=512)
+        # generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
+        
+        # inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
+        # output_model2 = model2.generate(**inputs, max_length=512)
+        # generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
 
-        # 输出Prompt的模型生成结果
-        print("\nGenerated text by CodeLlama-7b:\n")
-        print(generated_text_model1)
-        print("\nGenerated text by CodeLlama-7b-Python:\n")
-        print(generated_text_model2)
+        # # 输出Prompt的模型生成结果
+        # print("\nGenerated text by CodeLlama-7b:\n")
+        # print(generated_text_model1)
+        # print("\nGenerated text by CodeLlama-7b-Python:\n")
+        # print(generated_text_model2)
 
 
 
