@@ -1,5 +1,5 @@
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 
 # 加载模型
 def load_model(model_name, device):
@@ -20,7 +20,8 @@ def get_special_hidden_states(model, tokenizer, input_text, layer_indices, devic
 # 获取隐藏层输出
 def get_hidden_states(model, tokenizer, input_text, device):
     inputs = tokenizer(input_text, return_tensors='pt').to(device)  # 将输入移动到指定的GPU上
-    outputs = model(**inputs)
+    with torch.no_grad():
+        outputs = model(**inputs)
     
     # 提取所有层的隐藏状态，并将其转移到CPU以便后续处理
     hidden_states = outputs.hidden_states

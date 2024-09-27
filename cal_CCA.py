@@ -34,47 +34,43 @@ def calculate_cca(acts1, acts2, idx):
     print("\tPWCCA similarity: ", pwcca_mean)
 
 
-# 指定GPU设备：
-device_model1 = torch.device("cuda:2")  # 第x块GPU
-device_model2 = torch.device("cuda:3")  # 第y块GPU
+def main(model1_path, model2_path, data_file_path, device1, device2):
+    """主函数：加载模型、读取数据、计算CCA相似性"""
+    # 加载模型和tokenizer
+    model1, tokenizer1 = load_model(model_7b, device_model1)
+    model2, tokenizer2 = load_model(model_7b_Python, device_model2)
 
-# 设置模型和输入
-model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    # 读取数据文件
+    with jsonlines.open(data_file_path) as reader:
+        for obj in reader:
+            task_id = obj.get('task_id')
+            prompt = obj.get('prompt')
+            print(f"Task ID: {task_id}, Prompt: \n{prompt}")
 
-model1, tokenizer1 = load_model(model_7b, device_model1)
-model2, tokenizer2 = load_model(model_7b_Python, device_model2)
+            # 获取隐藏层输出
+            hidden_states_model1 = get_hidden_states(model1, tokenizer1, prompt, device1)
+            hidden_states_model2 = get_hidden_states(model2, tokenizer2, prompt, device2)
 
+            # 获取模型的总层数并计算每一层的CCA相关性得分
+            num_layers = len(hidden_states_model1)
+            for i in range(num_layers):
+                acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
+                acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
+                calculate_cca(acts1, acts2, i)
 
-# 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/js/data/humaneval.jsonl'  # Dataset
+if __name__ == "__main__":
+    # 指定GPU设备
+    device_model1 = torch.device("cuda:2")
+    device_model2 = torch.device("cuda:3")
 
+    # 模型和数据路径
+    model_7b = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
+    model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/js/data/humaneval.jsonl"
 
-
-with jsonlines.open(file_path) as reader:
-    for obj in reader:
-        task_id = obj.get('task_id')
-        prompt = obj.get('prompt')
-        # prompt = "def fibonacci("
-        print(f"Task ID: {task_id}, Prompt: \n{prompt}")
-        
-        # layer_indices = [1, -2]  # 倒数第二层和第二层
-
-        # 获取隐藏层矩阵
-        hidden_states_model1 = get_hidden_states(model1, tokenizer1, prompt, device_model1)
-        hidden_states_model2 = get_hidden_states(model2, tokenizer2, prompt, device_model2)
-
-        # 获取模型的总层数
-        num_layers = len(hidden_states_model1)
-
-        # 获取每一层的CCA相关性得分
-        for i in range(num_layers):
-            acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
-            acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
-            # print(f"hidden layer shape: {acts1.shape}")
-            calculate_cca(acts1, acts2, i)
-
-
+    # 调用主函数
+    main(model_7b, model_7b_Python, data_file, device_model1, device_model2)
             
 
 
