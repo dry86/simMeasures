@@ -47,7 +47,7 @@ model2, tokenizer2 = load_model(model_7b_Python, device_model2)
 
 
 # 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+file_path = '/newdisk/public/wws/humaneval-x-main/data/js/data/humaneval.jsonl'  # Dataset
 
 
 
@@ -64,12 +64,10 @@ with jsonlines.open(file_path) as reader:
         hidden_states_model1 = get_hidden_states(model1, tokenizer1, prompt, device_model1)
         hidden_states_model2 = get_hidden_states(model2, tokenizer2, prompt, device_model2)
 
-        
         # 获取模型的总层数
         num_layers = len(hidden_states_model1)
 
         # 获取每一层的CCA相关性得分
-        
         for i in range(num_layers):
             acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
             acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
@@ -78,23 +76,5 @@ with jsonlines.open(file_path) as reader:
 
 
             
-
-        # 输出所有层的CCA分数后，生成Prompt的模型输出
-        inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
-        output_model1 = model1.generate(**inputs, max_length=512)
-        generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
-        
-        inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
-        output_model2 = model2.generate(**inputs, max_length=512)
-        generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
-
-        # 输出Prompt的模型生成结果
-        print("\nGenerated text by CodeLlama-7b:\n")
-        print(generated_text_model1)
-        print("\nGenerated text by CodeLlama-7b-Python:\n")
-        print(generated_text_model2)
-
-
-
 
 
