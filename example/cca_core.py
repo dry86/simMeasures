@@ -265,8 +265,8 @@ def get_cca_similarity(acts1, acts2, epsilon=0., threshold=0.98,
   # assert dimensionality equal
   assert acts1.shape[1] == acts2.shape[1], "dimensions don't match"
   # check that acts1, acts2 are transposition
-  assert acts1.shape[0] < acts1.shape[1], ("input must be number of neurons"
-                                           "by datapoints")
+  # assert acts1.shape[0] < acts1.shape[1], ("input must be number of neurons"
+  #                                          "by datapoints")
   return_dict = {}
 
   # compute covariance with numpy function for extra stability
@@ -404,7 +404,7 @@ def robust_cca_similarity(acts1, acts2, threshold=0.98, epsilon=1e-6,
 
   return return_dict
 
-def compute_pwcca(acts1, acts2, epsilon=0.):
+def compute_pwcca(sresults, acts1, acts2):
     """ Computes projection weighting for weighting CCA coefficients 
     
     Args:
@@ -415,8 +415,8 @@ def compute_pwcca(acts1, acts2, epsilon=0.):
 	 Original cca coefficient mean and weighted mean
 
     """
-    sresults = get_cca_similarity(acts1, acts2, epsilon=epsilon, 
-					   compute_dirns=False, compute_coefs=True, verbose=False)
+    # sresults = get_cca_similarity(acts1, acts2, epsilon=epsilon, 
+		# 			   compute_dirns=False, compute_coefs=True, verbose=False)
     if np.sum(sresults["x_idxs"]) <= np.sum(sresults["y_idxs"]):
         dirns = np.dot(sresults["coef_x"], 
                     (acts1[sresults["x_idxs"]] - \

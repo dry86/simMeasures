@@ -25,7 +25,8 @@ def get_hidden_states(model, tokenizer, input_text, device):
     
     # 提取所有层的隐藏状态，并将其转移到CPU以便后续处理
     hidden_states = outputs.hidden_states
-    return [layer_hidden_state.detach().cpu().numpy() for layer_hidden_state in hidden_states]
+    return hidden_states
+    # return [layer_hidden_state.detach().cpu().numpy() for layer_hidden_state in hidden_states]
 
 # 获取logits输出
 def get_logits(model, tokenizer, input_text, device):
