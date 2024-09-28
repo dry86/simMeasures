@@ -10,17 +10,19 @@ start_time = time.time()
 model_path = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+device = torch.device("cuda:0")
+
 model = AutoModelForCausalLM.from_pretrained(
     model_path,
     torch_dtype=torch.float32
-).to("cuda")
+).to(device)
 
 prompt = '''def remove_non_ascii(s: str) -> str:
     """ <FILL_ME>
     return result
 '''
 
-input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to("cuda")
+input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(device)
 output = model.generate(
     input_ids,
     max_new_tokens=200,
@@ -36,4 +38,4 @@ end_time = time.time()
 
 # 计算并打印程序运行时间
 elapsed_time = end_time - start_time
-print(f"Program runtime: {elapsed_time:.2f} seconds")
+print(f"Program runtime: {elapsed_time:.2f} seconds")   
