@@ -353,7 +353,6 @@ def get_cca_similarity(acts1, acts2, epsilon=0., threshold=0.98,
 
   return return_dict
 
-
 def robust_cca_similarity(acts1, acts2, threshold=0.98, epsilon=1e-6,
                           compute_dirns=True):
   """Calls get_cca_similarity multiple times while adding noise.
@@ -403,6 +402,31 @@ def robust_cca_similarity(acts1, acts2, threshold=0.98, epsilon=1e-6,
         raise
 
   return return_dict
+
+
+
+def compute_svcca(acts1, acts2):
+
+    # Mean subtract activations
+    cacts1 = acts1 - np.mean(acts1, axis=1, keepdims=True)
+    cacts2 = acts2 - np.mean(acts2, axis=1, keepdims=True)
+
+    # Perform SVD
+    U1, s1, V1 = np.linalg.svd(cacts1, full_matrices=False)
+    U2, s2, V2 = np.linalg.svd(cacts2, full_matrices=False)
+
+    idx1 = sum_threshold(s1,0.9)
+    idx2 = sum_threshold(s2,0.9)
+    idx = max(idx1,idx2)
+
+    svacts1 = np.dot(s1[:idx]*np.eye(idx), V1[:idx])
+    svacts2 = np.dot(s2[:idx]*np.eye(idx), V2[:idx])
+
+    svcca_results = get_cca_similarity(svacts1, svacts2, epsilon=1e-6, verbose=False)
+    svcca_score = np.mean(svcca_results["cca_coef1"])
+    # print("\tSVCCA similarity: ", np.mean(svcca_results["cca_coef1"]))
+    return  svcca_score
+
 
 def compute_pwcca(sresults, acts1, acts2):
     """ Computes projection weighting for weighting CCA coefficients 
