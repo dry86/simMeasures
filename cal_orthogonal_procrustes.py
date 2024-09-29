@@ -3,6 +3,28 @@ from getHiddenStates import load_model, get_hidden_states
 from scipy.linalg import orthogonal_procrustes
 import jsonlines
 
+def procrustes_2(A, B):
+    """
+    Computes Procrustes distance bewteen representations A and B
+    for when |neurons| >> |examples| and A.T @ B too large to fit in memory.
+    Based on:
+         np.linalg.norm(A.T @ B, ord="nuc") == np.sum(np.sqrt(np.linalg.eig(((A @ A.T) @ (B @ B.T)))[0]))
+    
+    Parameters
+    ----------
+    A : examples x neurons
+    B : examples x neurons
+
+    Original Code
+    -------------    
+    nuc = np.linalg.norm(A @ B.T, ord="nuc")  # O(p * p * n)
+    """
+
+    A_sq_frob = torch.sum(A ** 2)
+    B_sq_frob = torch.sum(B ** 2)
+    nuc = torch.sum(torch.sqrt(torch.abs(torch.linalg.eig(((A @ A.T) @ (B @ B.T)))[0])))
+
+    return A_sq_frob + B_sq_frob - 2 * nuc
 
 def calculate_orthogonal_procrustes(matrix1, matrix2):
     """
