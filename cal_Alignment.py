@@ -35,7 +35,6 @@ def main(model1_path, model2_path, device1, device2):
     # hidden_states_model1 = load_hidden_states(model1_path, device1)
     # hidden_states_model2 = load_hidden_states(model2_path, device2)
 
-
     hidden_states_model1 = concatenate_hidden_states(model1_path, "hsm1", device1)
     hidden_states_model2 = concatenate_hidden_states(model2_path, "hsm2", device2)
 

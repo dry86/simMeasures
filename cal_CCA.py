@@ -1,8 +1,9 @@
 import torch
-from getHiddenStates import load_hidden_states, tokens_get_hidden_states
+from getHiddenStates import load_hidden_states, concatenate_hidden_states
 import numpy as np
 from example import cca_core
 from tqdm import tqdm
+from repsim.measures import *
 
 def cca_decomp(A, B, device):
     """Computes CCA vectors, correlations, and transformed matrices
@@ -70,21 +71,21 @@ def calculate_cca(acts1, acts2, idx):
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
     results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
 
-    print(f"\tMean CCA similarity: {np.mean(results["cca_coef1"])}")
+    print(f"\t Mean CCA similarity: {np.mean(results["cca_coef1"])}")
 
     svcca_res = cca_core.compute_svcca(acts1, acts2)
-    print("\tSVCCA similarity: ", svcca_res)
+    print("\t SVCCA similarity: ", svcca_res)
 
     pwcca_mean, w, _ = cca_core.compute_pwcca(results, acts1, acts2)
-    print("\tPWCCA similarity: ", pwcca_mean)
+    print("\t PWCCA similarity: ", pwcca_mean)
 
 
 def main(model1_path, model2_path, device1, device2):
     """主函数：加载模型、读取数据、计算CCA相似性"""
 
     # 获取隐藏层输出
-    hidden_states_model1 = load_hidden_states(model1_path, device1)
-    hidden_states_model2 = load_hidden_states(model2_path, device2)
+    hidden_states_model1 = concatenate_hidden_states(model1_path, "hsm1", device1)
+    hidden_states_model2 = concatenate_hidden_states(model2_path, "hsm2", device2)
 
     # 获取模型的总层数并计算每一层的CCA相关性得分
     num_layers = len(hidden_states_model1)
@@ -97,6 +98,13 @@ def main(model1_path, model2_path, device1, device2):
         # 通过 view() 函数将其变成二维矩阵 (batch_size * max_length, hidden_size)
         acts1 = layer_activations_model1.view(-1, layer_activations_model1.shape[-1])
         acts2 = layer_activations_model2.view(-1, layer_activations_model2.shape[-1])
+
+        device = acts1.device  # 获取 acts1 所在设备
+        acts2_device = acts2.to(device)  # 将 acts2 移动到 acts1 所在的设备
+        print(f"Layer {i}, acts1 shape: {acts1.shape}:")
+        cka = CKA()
+        score = cka(acts1, acts2_device, "nd")
+        print("\t CKA: ", score)
 
         acts1 = acts1.T # convert to neurons by datapoints
         acts2 = acts2.T
@@ -113,12 +121,12 @@ def main(model1_path, model2_path, device1, device2):
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # 模型和数据路径
-    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm1_batch_19.pt"
-    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm2_batch_19.pt"
+    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/Python"
+    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/Python"
     
     # 调用主函数
     main(pt_model_7b, pt_model_7b_Python, device_model1, device_model2)
