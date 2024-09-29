@@ -8,9 +8,9 @@ def load_model(model_name, device):
     model = model.to(device)  # 将模型移动到指定的GPU上
     return model, tokenizer
 
-def load_hidden_states(file_path):
-    """加载隐藏层输出张量"""
-    return torch.load(file_path)
+def load_hidden_states(file_path, device):
+    """加载隐藏层输出张量并指定加载的设备"""
+    return torch.load(file_path, map_location=device, weights_only=True)
 
 # 获取特定隐藏层输出
 def get_special_hidden_states(model, tokenizer, input_text, layer_indices, device):

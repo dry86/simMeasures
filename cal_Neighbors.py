@@ -3,33 +3,26 @@ from getHiddenStates import load_hidden_states
 import numpy as np
 from tqdm import tqdm
 from repsim.measures import *
+from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
+
+def cal_Neighbors(acts1, acts2, shape):
+
+    jaccard = JaccardSimilarity()
+    score = jaccard(acts1, acts2, shape)
+    print("\t JaccardSimilarity: ", score)
+
+    secondOrder_cosine = SecondOrderCosineSimilarity()
+    score = secondOrder_cosine(acts1, acts2, shape)
+    print("\t SecondOrderCosineSimilarity: ", score)
+
+    rankSim = RankSimilarity()
+    score = rankSim(acts1, acts2, shape)
+    print("\t RankSimilarity: ", score)
 
 
-def cal_RSM(acts1, acts2, shape):
+    score = joint_rank_jaccard_similarity(acts1, acts2, shape)
+    print("\t joint_rank_jaccard_similarity: ", score)
 
-    gulp = Gulp()
-    score = gulp(acts1, acts2, shape)
-    print("\t Gulp: ", score)
-
-    eigenspace_overlap = EigenspaceOverlapScore()
-    score = eigenspace_overlap(acts1, acts2, shape)
-    print("\t EigenspaceOverlapScore: ", score)
-
-    dCor = DistanceCorrelation()
-    score = dCor(acts1, acts2, shape)
-    print("\t DistanceCorrelation: ", score)
-
-    cka = CKA()
-    score = cka(acts1, acts2, shape)
-    print("\t CKA: ", score)
-
-    rsa = RSA()
-    score = rsa(acts1, acts2, shape)
-    print("\t RSA: ", score)
-
-    rsm_norm_diff = RSMNormDifference()
-    score = rsm_norm_diff(acts1, acts2, shape)
-    print("\t RSMNormDifference: ", score)
 
     
 
@@ -57,7 +50,7 @@ def main(model1_path, model2_path, device1, device2):
 
         shape = "nd"
         # 计算
-        cal_RSM(acts1_np, acts2_np, shape)
+        cal_Neighbors(acts1_np, acts2_np, shape)
 
 
 if __name__ == "__main__":

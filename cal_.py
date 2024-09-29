@@ -5,31 +5,11 @@ from tqdm import tqdm
 from repsim.measures import *
 
 
-def cal_RSM(acts1, acts2, shape):
+def measure(acts1, acts2, shape):
 
-    gulp = Gulp()
-    score = gulp(acts1, acts2, shape)
-    print("\t Gulp: ", score)
-
-    eigenspace_overlap = EigenspaceOverlapScore()
-    score = eigenspace_overlap(acts1, acts2, shape)
-    print("\t EigenspaceOverlapScore: ", score)
-
-    dCor = DistanceCorrelation()
-    score = dCor(acts1, acts2, shape)
-    print("\t DistanceCorrelation: ", score)
-
-    cka = CKA()
-    score = cka(acts1, acts2, shape)
-    print("\t CKA: ", score)
-
-    rsa = RSA()
-    score = rsa(acts1, acts2, shape)
-    print("\t RSA: ", score)
-
-    rsm_norm_diff = RSMNormDifference()
-    score = rsm_norm_diff(acts1, acts2, shape)
-    print("\t RSMNormDifference: ", score)
+    soft_correlation_match = SoftCorrelationMatch()
+    score = soft_correlation_match(acts1, acts2, shape)
+    print("\t SoftCorrelationMatch: ", score)
 
     
 
@@ -52,12 +32,11 @@ def main(model1_path, model2_path, device1, device2):
         acts2 = layer_activations_model2.view(-1, layer_activations_model2.shape[-1])
         print(f"Layer {i}, acts1 shape: {acts1.shape}:")
 
-        acts1_np = acts1.cpu().numpy()
-        acts2_np = acts2.cpu().numpy()
+        acts1_ny = acts1.cpu().numpy()
+        acts2_ny = acts2.cpu().numpy()
 
-        shape = "nd"
         # 计算
-        cal_RSM(acts1_np, acts2_np, shape)
+
 
 
 if __name__ == "__main__":

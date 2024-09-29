@@ -2,36 +2,32 @@ import torch
 from getHiddenStates import load_hidden_states
 import numpy as np
 from tqdm import tqdm
+from repsim.measures.procrustes import *
 from repsim.measures import *
 
 
-def cal_RSM(acts1, acts2, shape):
+def cal_Alignment(acts1, acts2, shape):
 
-    gulp = Gulp()
-    score = gulp(acts1, acts2, shape)
-    print("\t Gulp: ", score)
+    soft_correlation_match = SoftCorrelationMatch()
+    score = soft_correlation_match(acts1, acts2, shape)
+    print("\t SoftCorrelationMatch: ", score)
 
-    eigenspace_overlap = EigenspaceOverlapScore()
-    score = eigenspace_overlap(acts1, acts2, shape)
-    print("\t EigenspaceOverlapScore: ", score)
+    hard_correlation_match = HardCorrelationMatch()
+    score = hard_correlation_match(acts1, acts2, shape)
+    print("\t HardCorrelationMatch: ", score)
 
-    dCor = DistanceCorrelation()
-    score = dCor(acts1, acts2, shape)
-    print("\t DistanceCorrelation: ", score)
+    linear_regression = LinearRegression()
+    score = linear_regression(acts1, acts2, shape)
+    print("\t LinearRegression: ", score)
 
-    cka = CKA()
-    score = cka(acts1, acts2, shape)
-    print("\t CKA: ", score)
+    aligned_cosine_sim = AlignedCosineSimilarity()
+    score = aligned_cosine_sim(acts1, acts2, shape)
+    print("\t AlignedCosineSimilarity: ", score)
 
-    rsa = RSA()
-    score = rsa(acts1, acts2, shape)
-    print("\t RSA: ", score)
+    score = orthogonal_procrustes(acts1, acts2, shape)
+    print("\t Orthogonal_Procrustes2: ", score)
 
-    rsm_norm_diff = RSMNormDifference()
-    score = rsm_norm_diff(acts1, acts2, shape)
-    print("\t RSMNormDifference: ", score)
 
-    
 
 def main(model1_path, model2_path, device1, device2):
 
@@ -50,14 +46,17 @@ def main(model1_path, model2_path, device1, device2):
         # 通过 view() 函数将其变成二维矩阵 (batch_size * max_length, hidden_size)
         acts1 = layer_activations_model1.view(-1, layer_activations_model1.shape[-1])
         acts2 = layer_activations_model2.view(-1, layer_activations_model2.shape[-1])
+
         print(f"Layer {i}, acts1 shape: {acts1.shape}:")
 
         acts1_np = acts1.cpu().numpy()
         acts2_np = acts2.cpu().numpy()
-
+        
         shape = "nd"
         # 计算
-        cal_RSM(acts1_np, acts2_np, shape)
+        cal_Alignment(acts1_np, acts2_np, shape)
+
+
 
 
 if __name__ == "__main__":

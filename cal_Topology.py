@@ -1,78 +1,59 @@
 import torch
-from getHiddenStates import load_model, get_hidden_states
+from getHiddenStates import load_hidden_states
 import numpy as np
-import jsonlines
-from example.Topology import *
+from tqdm import tqdm
+from repsim.measures import *
 
-def calculate_Topo(acts1, acts2, idx):
+
+def cal_Topology(acts1, acts2, shape):
+
+    gs = GeometryScore()
+    score = gs(acts1, acts2, shape)
+    print("\t GeometryScore: ", score)
+
+    imd = IMDScore()
+    score = imd(acts1, acts2, shape)
+    print("\t IMDScore: ", score)
+
+
+def main(model1_path, model2_path, device1, device2):
+
+    # 获取隐藏层输出
+    hidden_states_model1 = load_hidden_states(model1_path, device1)
+    hidden_states_model2 = load_hidden_states(model2_path, device2)
+
+    # 获取模型的总层数并计算每一层的 相关性得分
+    num_layers = len(hidden_states_model1)
+    for i in tqdm(range(num_layers)):
+
+        # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
+        layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)
+        layer_activations_model2 = hidden_states_model2[i]  # 形状 (batch_size, max_length, hidden_size)
+
+        # 通过 view() 函数将其变成二维矩阵 (batch_size * max_length, hidden_size)
+        acts1 = layer_activations_model1.view(-1, layer_activations_model1.shape[-1])
+        acts2 = layer_activations_model2.view(-1, layer_activations_model2.shape[-1])
+        print(f"Layer {i}, acts1 shape: {acts1.shape}:")
+
+        acts1_np = acts1.cpu().numpy()
+        acts2_np = acts2.cpu().numpy()
+
+        shape = "nd"
+        # 计算
+        cal_Topology(acts1_np, acts2_np, shape)
+
+
+if __name__ == "__main__":
+
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:0")  # 第y块GPU
+
+    # 模型和数据路径
+    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm1_batch_19.pt"
+    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm2_batch_19.pt"
     
-    print(f"Layer {idx}, shape: {acts1.shape}:")
-    
-    # 计算gs相似度
-    gs_score = cal_gs(acts1, acts2)
-    print(f"\t{'geom_score':<10}: {gs_score:.16f}")
-
-    # 计算msid相似度
-    msid_score = cal_msid(acts1, acts2)
-    print(f"\t{'msid':<10}: {msid_score:.16f}")
-
-
-
-# 指定GPU设备：
-device_model1 = torch.device("cuda:1")  # 第x块GPU
-device_model2 = torch.device("cuda:0")  # 第y块GPU
-
-# 设置模型和输入
-model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
-
-model1, tokenizer1 = load_model(model_7b, device_model1)
-model2, tokenizer2 = load_model(model_7b_Python, device_model2)
-
-# 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
-
-with jsonlines.open(file_path) as reader:
-    for obj in reader:
-        task_id = obj.get('task_id')
-        prompt = obj.get('prompt')
-        # prompt = "def fibonacci("
-        print(f"Task ID: {task_id}, Prompt: \n{prompt}")
-        
-        # layer_indices = [1, -2]  # 倒数第二层和第二层
-
-        # 获取隐藏层矩阵
-        hidden_states_model1 = get_hidden_states(model1, tokenizer1, prompt, device_model1)
-        hidden_states_model2 = get_hidden_states(model2, tokenizer2, prompt, device_model2)
-
-        
-        # 获取模型的总层数
-        num_layers = len(hidden_states_model1)
-
-        # 获取每一层的CCA相关性得分
-        for i in range(num_layers):
-            acts1 = hidden_states_model1[i].reshape(-1, hidden_states_model1[i].shape[-1])
-            acts2 = hidden_states_model2[i].reshape(-1, hidden_states_model2[i].shape[-1])
-            # print(f"hidden layer shape: {acts1.shape}")
-            calculate_Topo(acts1, acts2, i)
-
+    # 调用主函数
+    main(pt_model_7b, pt_model_7b_Python, device_model1, device_model2)
             
-        # 输出所有层的CCA分数后，生成Prompt的模型输出
-        inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
-        output_model1 = model1.generate(**inputs, max_length=512)
-        generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
-        
-        inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
-        output_model2 = model2.generate(**inputs, max_length=512)
-        generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
-
-        # 输出Prompt的模型生成结果
-        print("\nGenerated text by CodeLlama-7b:\n")
-        print(generated_text_model1)
-        print("\nGenerated text by CodeLlama-7b-Python:\n")
-        print(generated_text_model2)
-
-
-
 
 
