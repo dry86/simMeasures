@@ -1,5 +1,5 @@
 import torch
-from getHiddenStates import load_hidden_states
+from getHiddenStates import load_hidden_states,concatenate_hidden_states
 import numpy as np
 from tqdm import tqdm
 from repsim.measures.procrustes import *
@@ -32,8 +32,12 @@ def cal_Alignment(acts1, acts2, shape):
 def main(model1_path, model2_path, device1, device2):
 
     # 获取隐藏层输出
-    hidden_states_model1 = load_hidden_states(model1_path, device1)
-    hidden_states_model2 = load_hidden_states(model2_path, device2)
+    # hidden_states_model1 = load_hidden_states(model1_path, device1)
+    # hidden_states_model2 = load_hidden_states(model2_path, device2)
+
+
+    hidden_states_model1 = concatenate_hidden_states(model1_path, "hsm1", device1)
+    hidden_states_model2 = concatenate_hidden_states(model2_path, "hsm2", device2)
 
     # 获取模型的总层数并计算每一层的 相关性得分
     num_layers = len(hidden_states_model1)
@@ -61,12 +65,12 @@ def main(model1_path, model2_path, device1, device2):
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:0")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # 模型和数据路径
-    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm1_batch_19.pt"
-    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm2_batch_19.pt"
+    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/Python"
+    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/Python"
     
     # 调用主函数
     main(pt_model_7b, pt_model_7b_Python, device_model1, device_model2)
