@@ -449,7 +449,7 @@ def _svcca_original(acts1, acts2):
 
 # Copied from https://github.com/google/svcca/blob/1f3fbf19bd31bd9b76e728ef75842aa1d9a4cd2b/pwcca.py
 # Modification: get_cca_similarity is in the same file.
-def compute_pwcca(acts1, acts2, epsilon=0.0):
+def compute_pwcca(acts1, acts2, epsilon=1e-8):
     """Computes projection weighting for weighting CCA coefficients
 
     Args:

@@ -4,6 +4,7 @@ import numpy as np
 from example import cca_core
 from tqdm import tqdm
 from repsim.measures import *
+from repsim.measures.cca import get_cca_similarity
 
 def cca_decomp(A, B, device):
     """Computes CCA vectors, correlations, and transformed matrices
@@ -65,6 +66,36 @@ def mean_cca_corr(rho):
     return torch.sum(rho) / len(rho)
 
 
+def cal_resi_cca(acts1, acts2, shape):
+
+    # score = get_cca_similarity(
+    #     acts1.T,
+    #     acts2.T,
+    #     epsilon=1e-8,
+    #     compute_dirns=False,
+    #     compute_coefs=True,
+    #     verbose=False,
+    # )
+    # print("\t CCA epsilon=1e-10: ", np.mean(score["cca_coef1"]))
+
+    score = get_cca_similarity(
+        acts1.T,
+        acts2.T,
+        epsilon=1e-8,
+        compute_dirns=False,
+        compute_coefs=True,
+        verbose=False,
+    )
+    print("\t CCA epsilon=1e-8: ", np.mean(score["cca_coef1"]))
+
+    svcca = SVCCA()
+    score = svcca(acts1, acts2, shape)
+    print("\t resi SVCCA: ", score)
+
+    pwcca = PWCCA()
+    score = pwcca(acts1, acts2, shape)
+    print("\t resi PWCCA: ", score)
+
 def calculate_cca(acts1, acts2, idx):
     # acts1 = acts1.T # convert to neurons by datapoints
     # acts2 = acts2.T
@@ -105,6 +136,8 @@ def main(model1_path, model2_path, device1, device2):
         cka = CKA()
         score = cka(acts1, acts2_device, "nd")
         print("\t CKA: ", score)
+
+        cal_resi_cca(acts1.cpu().numpy(), acts2.cpu().numpy(), "nd")
 
         acts1 = acts1.T # convert to neurons by datapoints
         acts2 = acts2.T
