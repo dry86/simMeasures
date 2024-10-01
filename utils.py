@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 import os
 
 # 定义保存到Excel的函数，支持指定工作表
-def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/example/results.xlsx"):
+def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/results.xlsx"):
     # 如果文件不存在，创建新文件并写入数据
     if not os.path.exists(file_name):
         # 创建一个新的 DataFrame，并保存到指定工作表中
@@ -45,7 +45,7 @@ def print_and_save(cal_method, score, row, sheet):
     print(f"\t {cal_method}: {score}")
     
     # 调用函数保存数据到指定工作表中
-    save_to_excel(cal_method, score, row, sheet)
+    save_to_excel(cal_method, score, row + 1, sheet)
 
 
 if __name__ == "__main__":

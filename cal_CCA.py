@@ -5,6 +5,7 @@ from example import cca_core
 from tqdm import tqdm
 from repsim.measures import *
 from repsim.measures.cca import get_cca_similarity
+from utils import print_and_save
 
 def cca_decomp(A, B, device):
     """Computes CCA vectors, correlations, and transformed matrices
@@ -66,17 +67,9 @@ def mean_cca_corr(rho):
     return torch.sum(rho) / len(rho)
 
 
-def cal_resi_cca(acts1, acts2, shape):
+def cal_resi_cca(acts1, acts2, row, sheet):
 
-    # score = get_cca_similarity(
-    #     acts1.T,
-    #     acts2.T,
-    #     epsilon=1e-8,
-    #     compute_dirns=False,
-    #     compute_coefs=True,
-    #     verbose=False,
-    # )
-    # print("\t CCA epsilon=1e-10: ", np.mean(score["cca_coef1"]))
+    shape = "nd"
 
     score = get_cca_similarity(
         acts1.T,
@@ -86,33 +79,41 @@ def cal_resi_cca(acts1, acts2, shape):
         compute_coefs=True,
         verbose=False,
     )
-    print("\t CCA epsilon=1e-8: ", np.mean(score["cca_coef1"]))
+    # print("\t CCA epsilon=1e-8: ", np.mean(score["cca_coef1"]))
+    print_and_save("resiCCA", np.mean(score["cca_coef1"]), row=row, sheet=sheet)
 
     svcca = SVCCA()
     score = svcca(acts1, acts2, shape)
-    print("\t resi SVCCA: ", score)
+    # print("\t resi SVCCA: ", score)
+    print_and_save("resiSVCCA", score, row=row, sheet=sheet)
 
     pwcca = PWCCA()
     score = pwcca(acts1, acts2, shape)
-    print("\t resi PWCCA: ", score)
+    # print("\t resi PWCCA: ", score)
+    print_and_save("resiPWCCA", score, row=row, sheet=sheet)
 
-def calculate_cca(acts1, acts2, idx):
+
+def calculate_cca(acts1, acts2, idx, sheet):
     # acts1 = acts1.T # convert to neurons by datapoints
     # acts2 = acts2.T
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
-    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
+    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-8, verbose=False)
 
-    print(f"\t Mean CCA similarity: {np.mean(results["cca_coef1"])}")
+    # print(f"\t Mean CCA similarity: {np.mean(results["cca_coef1"])}")
+    print_and_save("MeanCCA", np.mean(results["cca_coef1"]), row=idx, sheet=sheet)
 
     svcca_res = cca_core.compute_svcca(acts1, acts2)
-    print("\t SVCCA similarity: ", svcca_res)
+    # print("\t SVCCA similarity: ", svcca_res)
+    print_and_save("SVCCA", svcca_res, row=idx, sheet=sheet)
 
     pwcca_mean, w, _ = cca_core.compute_pwcca(results, acts1, acts2)
-    print("\t PWCCA similarity: ", pwcca_mean)
+    # print("\t PWCCA similarity: ", pwcca_mean)
+    print_and_save("PWCCA", pwcca_mean, row=idx, sheet=sheet)
 
 
 def main(model1_path, model2_path, device1, device2):
     """主函数：加载模型、读取数据、计算CCA相似性"""
+    lang_sheet = model1_path.split('/')[-1] # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
 
     # 获取隐藏层输出
     hidden_states_model1 = concatenate_hidden_states(model1_path, "hsm1", device1)
@@ -135,22 +136,19 @@ def main(model1_path, model2_path, device1, device2):
         print(f"Layer {i}, acts1 shape: {acts1.shape}:")
         cka = CKA()
         score = cka(acts1, acts2_device, "nd")
-        print("\t CKA: ", score)
+        # print("\t CKA: ", score)
+        print_and_save("CKA", score, row=i, sheet=lang_sheet)
 
-        cal_resi_cca(acts1.cpu().numpy(), acts2.cpu().numpy(), "nd")
+        cal_resi_cca(acts1.cpu().numpy(), acts2.cpu().numpy(), i, lang_sheet)
 
         acts1 = acts1.T # convert to neurons by datapoints
         acts2 = acts2.T
-
-        # u, s, vh, transformed_a, transformed_b = cca_decomp(acts1, acts2, device1)
-        # cal_mean_cca = mean_cca_corr(s)
-        # print(f"\tcal_mean_cca: {cal_mean_cca}")
 
         acts1_numpy = acts1.cpu().numpy()
         acts2_numpy = acts2.cpu().numpy()
 
         # 计算该层的CCA
-        calculate_cca(acts1_numpy, acts2_numpy, i)
+        calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
 
 if __name__ == "__main__":
 
