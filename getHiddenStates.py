@@ -15,10 +15,11 @@ def load_hidden_states(file_path, device):
 
 def get_batch_number(filename, keyword):
     """从文件名中提取批次号，例如 'hsm1_batch_19.pt' 提取出 19"""
-    return int(filename.split(f"{keyword}_batch_")[-1].split('.pt')[0])
+    return int(filename.split(f"{keyword}batch_")[-1].split('.pt')[0])
 
 def concatenate_hidden_states(directory, keyword, device):
     """加载并拼接目录中以特定关键字开头的所有.pt文件的隐藏状态张量"""
+    keyword = keyword + '_'
     hidden_states_list = []
 
     # 获取符合条件的文件并按批次号排序

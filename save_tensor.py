@@ -21,7 +21,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
     tokenizer2.padding_side = "right"
 
     prompts = []
-    padding_max_length = 262    # python 90%: 262
+    padding_max_length = 275    # python 90%: 262, cpp 90%: 275,
 
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
@@ -44,8 +44,8 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
                 hidden_states_model2 = tokens_get_hidden_states(model2, inputs_model2, device2)
 
                 # 保存 hidden_states 到文件
-                torch.save(hidden_states_model1, f"./pt_file/{task_id.split('/')[0]}/hsm1_batch_{task_number}.pt")
-                torch.save(hidden_states_model2, f"./pt_file/{task_id.split('/')[0]}/hsm2_batch_{task_number}.pt")
+                torch.save(hidden_states_model1, f"./pt_file/{task_id.split('/')[0]}/7b_batch_{task_number}.pt")
+                torch.save(hidden_states_model2, f"./pt_file/{task_id.split('/')[0]}/7bPython_batch_{task_number}.pt")
 
                 # 清空prompts，准备下一个batch
                 prompts = []
@@ -55,13 +55,13 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
 if __name__ == "__main__":
     # 指定GPU设备
     device_model1 = torch.device("cuda:0")
-    device_model2 = torch.device("cuda:3")
+    device_model2 = torch.device("cuda:1")
 
     # 模型和数据路径
     model_7b = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
     model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/cpp/data/humaneval.jsonl"
 
     # 调用主函数
     main(model_7b, model_7b_Python, data_file, device_model1, device_model2)
