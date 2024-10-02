@@ -49,12 +49,15 @@ def main(model1_path, model2_path, device1, device2):
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:1")  # 第x块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
     device_model2 = torch.device("cuda:1")  # 第y块GPU
 
+    device_model1 = 'cpu'
+    device_model2 = 'cpu'
+
     # 模型和数据路径
-    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm1_batch_19.pt"
-    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/JavaScript_hsm2_batch_19.pt"
+    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/Python/hsm1_batch_19.pt"
+    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/Python/hsm2_batch_19.pt"
     
     # 调用主函数
     main(pt_model_7b, pt_model_7b_Python, device_model1, device_model2)

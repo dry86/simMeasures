@@ -30,12 +30,13 @@ def mask_code_keywords(code: str) -> list:
         # 生成代码副本并进行 mask
         new_code = list(code)  # 把代码转为字符列表，便于替换
         new_code[start:end] = '<MASK>'  # 替换当前位置的关键字为 <MASK>
-        # masked_versions.append("".join(new_code))
-        # 截断<MASK>之后的部分
-        truncated_code = "".join(new_code[:end])
+        masked_versions.append("".join(new_code))
 
-        # 将截断后的版本加入到结果列表
-        masked_versions.append(truncated_code)
+        # # 截断<MASK>之后的部分
+        # truncated_code = "".join(new_code[:end])
+
+        # # 将截断后的版本加入到结果列表
+        # masked_versions.append(truncated_code)
 
         
 
@@ -43,7 +44,7 @@ def mask_code_keywords(code: str) -> list:
 
 # 指定GPU设备：
 device_model1 = torch.device("cuda:0")  # 第x块GPU
-device_model2 = torch.device("cuda:1")  # 第y块GPU
+device_model2 = torch.device("cuda:3")  # 第y块GPU
 
 # 设置模型和输入
 model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"

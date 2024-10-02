@@ -64,9 +64,8 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
 if __name__ == "__main__":
 
     """
-    使用方式:
-        确定data_file要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 
-        然后传给save_tensor.py 中 padding_max_length 
+    how to use:
+        修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
     device_model1 = torch.device("cuda:0")
@@ -76,7 +75,7 @@ if __name__ == "__main__":
     model_7b = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
     model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/cpp/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/go/data/humaneval.jsonl"
 
     # 调用主函数
     main(model_7b, model_7b_Python, data_file, device_model1, device_model2)

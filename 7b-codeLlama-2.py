@@ -10,7 +10,7 @@ start_time = time.time()
 model_path = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 
 model = AutoModelForCausalLM.from_pretrained(
     model_path,
