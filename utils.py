@@ -40,16 +40,20 @@ def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/
             # writer.book = book  # 使用已加载的工作簿
             df_existing.to_excel(writer, sheet_name=sheet, index=False)
 
-        # 设置单元格格式为数字类型，避免科学计数法
+        # 重新打开文件，设置单元格格式为数字类型，避免科学计数法
+        book = load_workbook(file_name)
         sheet_to_format = book[sheet]
-        for r in sheet_to_format.iter_rows(min_row=2, max_row=row, min_col=1, max_col=len(df_existing.columns)):
-            for cell in r:
+        
+        # 设置单元格格式为浮点型数字显示
+        for row_cells in sheet_to_format.iter_rows(min_row=2, max_row=row, min_col=1, max_col=len(df_existing.columns)):
+            for cell in row_cells:
                 if isinstance(cell.value, float):  # 只对小数类型的单元格进行格式设置
                     cell.number_format = '0.0000000000000000'  # 设置足够的位数显示小数点后的所有位数
 
         # 保存工作簿
         book.save(file_name)
 
+        
 # 打印并保存计算结果的函数
 def print_and_save(cal_method, score, row, sheet):
     # 打印结果

@@ -21,7 +21,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
     tokenizer2.padding_side = "right"
 
     prompts = []
-    padding_max_length = 292    # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
+    padding_max_length = 259    # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
 
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
@@ -50,7 +50,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
                 # 清空prompts，准备下一个batch
                 prompts = []
 
- 
+
 
 if __name__ == "__main__":
     """
@@ -60,13 +60,13 @@ if __name__ == "__main__":
     """
     # 指定GPU设备
     device_model1 = torch.device("cuda:0")
-    device_model2 = torch.device("cuda:3")
+    device_model2 = torch.device("cuda:2")
 
     # 模型和数据路径
     model_7b = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
     model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/java/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/js/data/humaneval.jsonl"
 
     # 调用主函数
     main(model_7b, model_7b_Python, data_file, device_model1, device_model2)
