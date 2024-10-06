@@ -1,5 +1,5 @@
 import torch
-from getHiddenStates import load_hidden_states, concatenate_hidden_states
+from getHiddenStates import concatenate_hidden_states
 import numpy as np
 from example import cca_core
 from tqdm import tqdm
@@ -121,14 +121,14 @@ def main(model1_path, model2_path, device1, device2):
 
     # 获取隐藏层输出
     hidden_states_model1 = concatenate_hidden_states(model1_path, "7b", device1)
-    hidden_states_model2 = concatenate_hidden_states(model2_path, "7bPython", device2)
+    hidden_states_model2 = concatenate_hidden_states(model2_path, "7bInstruct", device2)
 
     # 获取模型的总层数并计算每一层的CCA相关性得分
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        if i > 21:
-            break
+        # if i < 16:
+        #     continue
 
         # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
         layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)
@@ -160,14 +160,14 @@ def main(model1_path, model2_path, device1, device2):
 if __name__ == "__main__":
 
     device_model1 = torch.device("cuda:1")  # 第x块GPU
-    device_model2 = torch.device("cuda:3")  # 第y块GPU
+    device_model2 = torch.device("cuda:2")  # 第y块GPU
 
     device_model1 = 'cpu'
-    # device_model2 = 'cpu'
+    device_model2 = 'cpu'
 
     # 模型和数据路径
-    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/Python"
-    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/Python"
+    pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/CPP"
+    pt_model_7b_Python = "/newdisk/public/wws/simMeasures/pt_file/CPP"
     
     # 调用主函数
     main(pt_model_7b, pt_model_7b_Python, device_model1, device_model2)

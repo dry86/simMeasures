@@ -1,8 +1,24 @@
 import torch
 from getHiddenStates import load_model, get_hidden_states
-import numpy as np
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import jsonlines
 import re
+
+# 使用正则表达式捕获关键字和操作符，比如 标识符, 操作符, 数字
+keyword_pattern = r'->|>=|<=|==|!=|\d+\.\d+|\d+|\b\w+\b|[%=+*/-]'  # 捕获字母、数字、和常见操作符
+
+# 定义模型加载函数
+def load_model_and_tokenizer(model_path: str, device: torch.device):
+    """
+    加载预训练的模型和分词器，并将模型加载到指定设备上。
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        pad_token_id=tokenizer.pad_token_id,
+        torch_dtype=torch.float32
+    ).to(device)
+    return model, tokenizer
 
 def mask_code_keywords(code: str) -> list:
     # 匹配 """ 注释的正则表达式
@@ -14,10 +30,10 @@ def mask_code_keywords(code: str) -> list:
     # 列表存储多次 mask 的结果
     masked_versions = []
 
-    # 找到所有非注释区域的代码关键字和符号
-    # 使用正则表达式捕获关键字和操作符，比如 return、标识符和操作符
-    keyword_pattern = r'->|>=|<=|==|!=|\d+\.\d+|\d+|\b\w+\b|[%=+*/-]'  # 捕获字母、数字、和常见操作符
+    # 列表存储每次被 mask 掉的关键字
+    ground_labels = []
 
+    # 找到所有非注释区域的代码关键字和符号
     # 提取所有关键字的位置
     mask_positions = [(match.group(), match.span()) for match in re.finditer(keyword_pattern, code)]
 
@@ -29,116 +45,120 @@ def mask_code_keywords(code: str) -> list:
     for word, (start, end) in non_comment_positions:
         # 生成代码副本并进行 mask
         new_code = list(code)  # 把代码转为字符列表，便于替换
-        new_code[start:end] = '<MASK>'  # 替换当前位置的关键字为 <MASK>
+        new_code[start:end] = '<FILL_ME>'  # 替换当前位置的关键字为 <FILL_ME>
         masked_versions.append("".join(new_code))
 
-        # # 截断<MASK>之后的部分
-        # truncated_code = "".join(new_code[:end])
+        # 保存被 mask 掉的关键字
+        ground_labels.append(word)
 
-        # # 将截断后的版本加入到结果列表
-        # masked_versions.append(truncated_code)
+    return masked_versions, ground_labels
 
+# 定义生成文本函数
+def generate_text(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
+    """
+    基于给定的 prompt 生成新的文本。
+    """
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    # input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(device)
+    output = model.generate(input_ids, 
+                            attention_mask = attention_mask,
+                            max_new_tokens = max_new_tokens, do_sample=True, top_p=0.9, temperature=0.1) #, do_sample=True, top_p=0.9, temperature=0.1, num_return_sequences=1, repetition_penalty=0.9, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id 
+    output = output[0].to("cpu")  # 将结果转移到 CPU
+    generated_text = tokenizer.decode(output[input_ids.shape[1]:], skip_special_tokens=True)
+    return generated_text
+
+def cal_mDis(str1: str, str2: str) -> int:
+    # Check if the two strings are identical
+    if str1 == str2:
+        return 0  # Return 0 if they are the same
+    else:
+        return 1
+
+
+def main(model_1, model_2, file_path, device1, device2):
+
+    model1, tokenizer1 = load_model_and_tokenizer(model_1, device1)
+    model2, tokenizer2 = load_model_and_tokenizer(model_2, device2)
+
+    model1.eval()
+    model2.eval()
+
+    count_mDis = 0
+    count_qErr = 0
+    count_qErr_prime = 0
+    count_N_sample = 0
+
+    with jsonlines.open(file_path) as reader:
+        for obj in reader:
+            task_id = obj.get('task_id').split('/')[1]
+            prompt = obj.get('prompt')
+            refer = obj.get('canonical_solution')
+            # print(f"Task ID: {task_id}, Prompt: \n{prompt}")
+            ground_truth_code = prompt + refer
+            masked_results, ground_labels = mask_code_keywords(ground_truth_code)
+
+            
+            # 输出每次 mask 掉后的结果
+            for idx, (masked_code, ground_label) in enumerate(zip(masked_results, ground_labels), 1):
+                print(f"Masked Version {idx}:")
+                # print(f"{masked_code}\n")
+
+                # 生成填充内容
+                filling1 = generate_text(model1, tokenizer1, masked_code, device1)
+                filling2 = generate_text(model2, tokenizer2, masked_code, device2)
+                # 取生成的第一个内容
+                token1 = re.search(keyword_pattern, filling1).group()
+                token2 = re.search(keyword_pattern, filling2).group()
+
+                # 输出结果
+                print(f"\t ground_label: {ground_label}")
+                print(f"\t filling_1: {token1}")
+                print(f"\t filling_2: {token2}")
+                print("---------------------------------")
+                count_mDis = count_mDis + cal_mDis(token1, token2)
+                count_qErr = count_qErr + cal_mDis(token1, ground_label)
+                count_qErr_prime = count_qErr_prime + cal_mDis(token2, ground_label)
         
+            count_N_sample = count_N_sample + len(masked_results)
 
-    return masked_versions
+            if int(task_id) > 5:
+                break
 
-# 指定GPU设备：
-device_model1 = torch.device("cuda:0")  # 第x块GPU
-device_model2 = torch.device("cuda:3")  # 第y块GPU
+    m_Dis = count_mDis / count_N_sample
 
-# 设置模型和输入
-model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    q_Err = count_qErr / count_N_sample
+    m_ErrCorrDis = m_Dis / q_Err
+    m_ErrCorrDis2 = count_mDis / count_qErr
 
-model1, tokenizer1 = load_model(model_7b, device_model1)
-model2, tokenizer2 = load_model(model_7b_Python, device_model2)
+    q_Err_prime = count_qErr_prime / count_N_sample
+    m_min_Dis = abs(q_Err - q_Err_prime)
+    m_max_Dis = min((q_Err + q_Err_prime), 1)
+    m_MinMaxNorm_Dis = (m_Dis - m_min_Dis) / (m_max_Dis - m_min_Dis)
 
-model1.eval()
-model2.eval()
+    print(m_Dis)
+    print(m_ErrCorrDis)
 
-# 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+            
 
-with jsonlines.open(file_path) as reader:
-    for obj in reader:
-        task_id = obj.get('task_id')
-        prompt = obj.get('prompt')
-        refer = obj.get('canonical_solution')
-        print(f"Task ID: {task_id}, Prompt: \n{prompt}")
-        ground_truth_code = prompt + refer
-        masked_results = mask_code_keywords(ground_truth_code)
-        prompt = "\n# Continue the code after <MASK>:"
-        masked_results = [result + prompt for result in masked_results]
-        # 输出每次 mask 掉后的结果
-        for idx, masked_code in enumerate(masked_results, 1):
-            print(f"Masked Version {idx}:\n{masked_code}\n")
+if __name__ == "__main__":
 
-            # 将 "<mask>" 替换为模型能够识别的特殊 token，比如 "<unk>" 或者 "<mask>"，具体取决于模型支持的 token
-            # masked_input = masked_code.replace("<mask>", '<MASK>')  # 使用 <unk> 作为占位符
+    # 指定GPU设备：
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
 
-            # inputs1 = tokenizer1(masked_code, return_tensors='pt').to(device_model1)
-            # with torch.no_grad():
-            #     output_model1 = model1(**inputs1)
-            # mask_logits = output_model1.logits
-            # predicted_token_id = torch.argmax(mask_logits, dim=-1).item()
-            # predicted_token = tokenizer1.decode(predicted_token_id)
+    # device_model1 = 'cpu'
+    # device_model2 = 'cpu'
 
-            inputs1 = tokenizer1(masked_code, return_tensors='pt').to(device_model1)
-            # 找到 <mask> 的位置
-            mask_token_index1 = torch.where(inputs1.input_ids == tokenizer1.convert_tokens_to_ids("<MASK>"))[1]
-            with torch.no_grad():
-                output_model1 = model1(**inputs1)
-            # # 获取 mask 位置的 logits
-            # mask_logits1 = output_model1.logits[0, mask_token_index1, :]
-            # # 获取 mask 的概率矩阵
-            # probabilities_model1 = torch.softmax(mask_logits1, dim=-1)
-            # # 获取预测的 token id
-            # predicted_token_id1 = torch.argmax(mask_logits1, dim=-1).item()
-            # # 获取该 token id 对应的 token
-            # predicted_token1 = tokenizer1.decode(predicted_token_id1)
-            # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
-            # 通常 output_model1 的 logits 可以通过 argmax 获取最可能的 token ids
-            generated_token_ids1 = torch.argmax(output_model1.logits, dim=-1)
-            # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
-            generated_text1 = tokenizer1.decode(generated_token_ids1[0], skip_special_tokens=True)
-            # 打印生成的文本
-            print("Generated text1:", generated_text1)
+    # 设置模型和输入
+    model_1 = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf" # "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
 
+    # 打开jsonl文件并遍历
+    file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
 
-            # 第二个模型进行相同的处理:
-            inputs2 = tokenizer2(masked_code, return_tensors='pt').to(device_model2)
-            # with torch.no_grad():
-            #     output_model2 = model2(**inputs2)
-            # # 找到 <mask> 的位置
-            # mask_token_index2 = torch.where(inputs2.input_ids == tokenizer2.convert_tokens_to_ids("<MASK>"))[1]   
-
-            # # 获取 mask 位置的 logits
-            # mask_logits2 = output_model2.logits[0, mask_token_index2, :]
-            # # 获取 mask 的概率矩阵
-            # probabilities_model2 = torch.softmax(mask_logits2, dim=-1)
-            # # 获取预测的 token id
-            # predicted_token_id2 = torch.argmax(mask_logits2, dim=-1).item()
-            # # 获取该 token id 对应的 token
-            # predicted_token2 = tokenizer2.decode(predicted_token_id2)
-            # # 获取生成的 token ids（假设是自回归模型，如 CodeLlama 生成了一段序列）
-            # # 通常 output_model2 的 logits 可以通过 argmax 获取最可能的 token ids
-            # generated_token_ids2 = torch.argmax(output_model2.logits, dim=-1)
-            # # 直接使用 tokenizer2.decode() 将生成的 token ids 转换为文本
-            # generated_text2 = tokenizer2.decode(generated_token_ids2[0], skip_special_tokens=True)
-            # # 打印生成的文本
-            # print("Generated text2:", generated_text2)
-
-
-            # 假设使用 generate() 生成了一个序列
-            with torch.no_grad():
-                generated_token_ids21 = model2.generate(**inputs2, max_length=512)
-
-            # 直接解码生成的 token ids
-            generated_text21 = tokenizer2.decode(generated_token_ids21[0], skip_special_tokens=True)
-
-            # 打印生成的文本
-            print("Generated text21:", generated_text21)
-
+    main(model_1, model_2, file_path, device_model1, device_model2)
 
             
 
