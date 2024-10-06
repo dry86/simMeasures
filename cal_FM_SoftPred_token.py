@@ -30,49 +30,57 @@ def cal_norm_of_soft_prediction_diff(O, O_prime):
     
     return m_pred_norm_diff
 
-# 指定GPU设备：
-device_model1 = torch.device("cuda:0")  # 第x块GPU
-device_model2 = torch.device("cuda:1")  # 第y块GPU
 
-# 设置模型和输入
-model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+def main(model_1, model_2, file_path, device1, device2):
 
-model1, tokenizer1 = load_model(model_7b, device_model1)
-model2, tokenizer2 = load_model(model_7b_Python, device_model2)
+    model1, tokenizer1 = load_model(model_1, device1)
+    model2, tokenizer2 = load_model(model_2, device2)
 
+    with jsonlines.open(file_path) as reader:
+        for obj in reader:
+            task_id = obj.get('task_id')
+            prompt = obj.get('prompt')
+            refer = obj.get('canonical_solution')
+            # prompt = "def fibonacci("
+            print(f"Task ID: {task_id}")
+            # print(f"Prompt: {prompt}")
+                
+            # 生成模型的logits, probabilities输出
+            inputs = tokenizer1(prompt, return_tensors='pt').to(device1)
+            output_model1 = model1(**inputs)
+            logits_model1 = output_model1.logits
+            # 使用softmax将logits转换为概率分布
+            probabilities_model1 = torch.softmax(logits_model1, dim=-1)
+            # generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
+            
+            inputs = tokenizer2(prompt, return_tensors='pt').to(device2)
+            output_model2 = model2(**inputs)
+            logits_model2 = output_model2.logits
+            probabilities_model2 = torch.softmax(logits_model2, dim=-1)
+            # generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
 
-# 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+            logits_norm_diff = cal_norm_of_soft_prediction_diff(logits_model1, logits_model2)
+            print(f"Logits Norm of Soft Prediction Difference: {logits_norm_diff}")
 
-with jsonlines.open(file_path) as reader:
-    for obj in reader:
-        task_id = obj.get('task_id')
-        prompt = obj.get('prompt')
-        refer = obj.get('canonical_solution')
-        # prompt = "def fibonacci("
-        print(f"Task ID: {task_id}, Prompt: \n{prompt}")
-               
-        # 生成模型的logits, probabilities输出
-        inputs = tokenizer1(prompt, return_tensors='pt').to(device_model1)
-        output_model1 = model1(**inputs)
-        logits_model1 = output_model1.logits
-        # 使用softmax将logits转换为概率分布
-        probabilities_model1 = torch.softmax(logits_model1, dim=-1)
-        # generated_text_model1 = tokenizer1.decode(output_model1[0], skip_special_tokens=True)
-        
-        inputs = tokenizer2(prompt, return_tensors='pt').to(device_model2)
-        output_model2 = model2(**inputs)
-        logits_model2 = output_model2.logits
-        probabilities_model2 = torch.softmax(logits_model2, dim=-1)
-        # generated_text_model2 = tokenizer2.decode(output_model2[0], skip_special_tokens=True)
-
-        logits_norm_diff = cal_norm_of_soft_prediction_diff(logits_model1, logits_model2)
-        print(f"Logits Norm of Soft Prediction Difference: {logits_norm_diff}")
-
-        probabilities_norm_diff = cal_norm_of_soft_prediction_diff(probabilities_model1, probabilities_model2)
-        print(f"Probabilities Norm of Soft Prediction Difference: {probabilities_norm_diff}")
+            probabilities_norm_diff = cal_norm_of_soft_prediction_diff(probabilities_model1, probabilities_model2)
+            print(f"Probabilities Norm of Soft Prediction Difference: {probabilities_norm_diff}")
 
 
+if __name__ == "__main__":
 
+    # 指定GPU设备：
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
+
+    # device_model1 = 'cpu'
+    device_model2 = 'cpu'
+
+    # 设置模型和输入
+    model_1 = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf" # "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+
+    # 打开jsonl文件并遍历
+    file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+
+    main(model_1, model_2, file_path, device_model1, device_model2)
 

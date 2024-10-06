@@ -12,7 +12,7 @@ def main(model1_path, model_idx, data_file_path, device1, batch_size=20):
     tokenizer1.padding_side = "right"   # 使用EOS时,向右填充
 
     prompts = []
-    padding_max_length = 292    # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
+    padding_max_length = 262    # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
 
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
@@ -46,14 +46,14 @@ if __name__ == "__main__":
         注意更改 data_file 路径, 相匹配
     """
     # 指定GPU设备
-    device_model = torch.device("cuda:0")
+    device_model = torch.device("cuda:1")
 
     # 模型和数据路径
-    model_7b = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf"
-    model_idx = "7bInstruct"
+    model = "/newdisk/public/wws/model_dir/deepseek-coder/6.7b-instruct"
+    model_idx = "dsc6dot7instruct"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/java/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl"
 
     # 调用主函数
-    main(model_7b, model_idx, data_file, device_model)
+    main(model, model_idx, data_file, device_model)
     

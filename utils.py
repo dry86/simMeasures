@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 import os
 
 # 定义保存到Excel的函数，支持指定工作表
-def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/Instruct/results-instruct.xlsx"):
+def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/deepseekercoder/6dot7/results.xlsx"):
 
     # 如果文件不存在，创建新文件并写入数据
     if not os.path.exists(file_name):

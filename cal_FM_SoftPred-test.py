@@ -54,42 +54,31 @@ def mask_code_keywords(code: str) -> list:
     return masked_versions, ground_labels
 
 # 定义生成文本函数
-def generate_text(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
-    """
-    基于给定的 prompt 生成新的文本。
-    """
+def generate_soft(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
+
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    # input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(device)
-    output = model.generate(input_ids, 
-                            attention_mask = attention_mask,
-                            max_new_tokens = max_new_tokens, do_sample=True, top_p=0.9, temperature=0.1) #, do_sample=True, top_p=0.9, temperature=0.1, num_return_sequences=1, repetition_penalty=0.9, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id 
-    output = output[0].to("cpu")  # 将结果转移到 CPU
-    # var = output[input_ids.shape[1]:]
-    generated_text = tokenizer.decode(output[input_ids.shape[1]:], skip_special_tokens=True)
-    return generated_text
 
-def cal_mDis(str1: str, str2: str) -> int:
-    # Check if the two strings are identical
-    if str1 == str2:
-        return 0  # Return 0 if they are the same
-    else:
-        return 1
+    output = model(input_ids)
+    pos = input_ids.shape[1] - 1
+    logits = output.logits[:, pos:, :]
+    # 获取 mask 的概率矩阵
+    probabilities = torch.softmax(logits, dim=-1)
+    # 获取预测的 token id
+    predicted_token_id = torch.argmax(logits, dim=-1)
+    predicted_token_id = predicted_token_id.flatten().tolist()
+    # 获取该 token id 对应的 token
+    predicted_token = tokenizer.decode(predicted_token_id, skip_special_tokens=True)
+    return output
 
 
 def main(model_1, model_2, file_path, device1, device2):
 
     model1, tokenizer1 = load_model_and_tokenizer(model_1, device1)
-    model2, tokenizer2 = load_model_and_tokenizer(model_2, device2)
+    # model2, tokenizer2 = load_model_and_tokenizer(model_2, device2)
 
     model1.eval()
-    model2.eval()
-
-    count_mDis = 0
-    count_qErr = 0
-    count_qErr_prime = 0
-    count_N_sample = 0
+    # model2.eval()
 
     with jsonlines.open(file_path) as reader:
         for obj in reader:
@@ -107,39 +96,18 @@ def main(model_1, model_2, file_path, device1, device2):
                 # print(f"{masked_code}\n")
 
                 # 生成填充内容
-                filling1 = generate_text(model1, tokenizer1, masked_code, device1)
-                filling2 = generate_text(model2, tokenizer2, masked_code, device2)
+                filling1 = generate_soft(model1, tokenizer1, masked_code, device1)
+                # filling2 = generate_text(model2, tokenizer2, masked_code, device2)
                 # 取生成的第一个内容
-                token1 = re.search(keyword_pattern, filling1).group()
-                token2 = re.search(keyword_pattern, filling2).group()
+                # token1 = re.search(keyword_pattern, filling1).group()
+
 
                 # 输出结果
                 print(f"\t ground_label: {ground_label}")
-                print(f"\t filling_1: {token1}")
-                print(f"\t filling_2: {token2}")
+                # print(f"\t filling_1: {token1}")
+                # print(f"\t filling_2: {token2}")
                 print("---------------------------------")
-                count_mDis = count_mDis + cal_mDis(token1, token2)
-                count_qErr = count_qErr + cal_mDis(token1, ground_label)
-                count_qErr_prime = count_qErr_prime + cal_mDis(token2, ground_label)
-        
-            count_N_sample = count_N_sample + len(masked_results)
 
-            if int(task_id) > 5:
-                break
-
-    m_Dis = count_mDis / count_N_sample
-
-    q_Err = count_qErr / count_N_sample
-    m_ErrCorrDis = m_Dis / q_Err
-    m_ErrCorrDis2 = count_mDis / count_qErr
-
-    q_Err_prime = count_qErr_prime / count_N_sample
-    m_min_Dis = abs(q_Err - q_Err_prime)
-    m_max_Dis = min((q_Err + q_Err_prime), 1)
-    m_MinMaxNorm_Dis = (m_Dis - m_min_Dis) / (m_max_Dis - m_min_Dis)
-
-    print(m_Dis)
-    print(m_ErrCorrDis)
 
             
 

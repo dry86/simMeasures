@@ -146,7 +146,6 @@ def main(model1_path, model2_path, device1, device2):
 
         # CCA
         calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
-
         # Alignment
         cal_Alignment(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
         # RSM
