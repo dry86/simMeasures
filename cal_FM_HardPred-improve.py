@@ -54,6 +54,27 @@ def mask_code_keywords(code: str) -> list:
 
     return masked_versions, ground_labels
 
+def is_multi_token(tokenizer, text: str):
+    """
+    判断给定的文本是否由多个 token id 组成。
+    
+    Args:
+    - tokenizer: 使用的分词器。
+    - text: 需要检查的文本。
+    
+    Returns:
+    - bool: 如果文本由多个 token 组成，则返回 True；否则返回 False。
+    - token_id: 对应的 token id。
+    """
+    # 获取token_ids
+    token_id = tokenizer.convert_tokens_to_ids(text)
+
+    # 如果 token_id == 0，说明该文本不在词汇表中
+    if token_id == 0:
+        return True
+    else:
+        return False
+
 # 定义生成文本函数
 def generate_text(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
     """
@@ -74,6 +95,58 @@ def generate_text(model, tokenizer, prompt: str, device: torch.device, max_new_t
     var = output[input_ids.shape[1]:]
     generated_text = tokenizer.decode(output[input_ids.shape[1]:], skip_special_tokens=True)
     return generated_text
+
+def generate_text_with_logits(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
+    """
+    基于给定的 prompt 生成新的文本，并返回生成过程中每个token的logits。
+    """
+    # Tokenize prompt
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    input_ids = inputs["input_ids"]
+    input_len = input_ids.shape[1]
+    attention_mask = inputs["attention_mask"]
+
+    generated_text = prompt
+    logits_first_token = []
+
+    # 逐步生成新token
+    for i in range(max_new_tokens):
+        # 前向传递获取logits
+        with torch.no_grad():
+            outputs = model(input_ids=input_ids, 
+                            attention_mask=attention_mask)
+            logits = outputs.logits
+        
+        # 存储第一个token的logits
+        if i == 0:
+            logits_first_token = logits[:, -1, :]  # 只存储当前步最后一个token的logits
+        
+        # 通过采样策略选择下一个token id
+        next_token_id = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(0)
+        
+        if next_token_id == tokenizer.eos_token_id: # next_token_id == 2, 表示生成结束
+            break
+
+        # 更新input_ids
+        input_ids = torch.cat([input_ids, next_token_id], dim=1)
+        
+        # 解码生成的token，添加到文本中
+        generated_text += ' ' + tokenizer.decode(next_token_id[0], skip_special_tokens=True)
+
+    gen_text = generated_text[len(prompt):]
+    gen_token_id = input_ids[:, input_len:]
+
+    gen_text = gen_text.split()[0]
+    if is_multi_token(tokenizer, gen_text):
+        print("\t gen_text is multi_token")
+        return -1, -1, -1, -1
+    
+    gen_first_token = gen_token_id[0][0].item()
+
+    probabilities_first_token = torch.softmax(logits_first_token, dim=-1)
+
+    return logits_first_token[0], probabilities_first_token[0], gen_first_token, gen_text
+
 
 def cal_mDis(str1: str, str2: str) -> int:
     # Check if the two strings are identical
@@ -109,25 +182,25 @@ def main(model_1, model_2, file_path, device1, device2):
             # 输出每次 mask 掉后的结果
             for idx, (masked_code, ground_label) in enumerate(zip(masked_results, ground_labels), 1):
                 print(f"Masked Version {idx}:")
-                # print(f"{masked_code}\n")
 
+                if is_multi_token(tokenizer1, ground_label):
+                    print(f"\t ground_label is multi_token: {ground_label}")
+                    continue
+                
                 # 生成填充内容
-                filling1 = generate_text(model1, tokenizer1, masked_code, device1)
-                filling2 = generate_text(model2, tokenizer2, masked_code, device2)
-                # 取生成的第一个内容
-                token1 = re.search(keyword_pattern, filling1).group()
-                token2 = re.search(keyword_pattern, filling2).group()
+                logits1, prob1, token1, gen_text1 = generate_text_with_logits(model1, tokenizer1, masked_code, device1)
+                logits2, prob2, token2, gen_text2 = generate_text_with_logits(model2, tokenizer2, masked_code, device2)
 
                 # 输出结果
                 print(f"\t ground_label: {ground_label}")
-                print(f"\t filling_1: {token1}")
-                print(f"\t filling_2: {token2}")
+                print(f"\t gen_text1: {gen_text1}")
+                print(f"\t gen_text2: {gen_text2}")
                 print("---------------------------------")
-                count_mDis = count_mDis + cal_mDis(token1, token2)
-                count_qErr = count_qErr + cal_mDis(token1, ground_label)
-                count_qErr_prime = count_qErr_prime + cal_mDis(token2, ground_label)
+                count_mDis = count_mDis + cal_mDis(gen_text1, gen_text2)
+                count_qErr = count_qErr + cal_mDis(gen_text1, ground_label)
+                count_qErr_prime = count_qErr_prime + cal_mDis(gen_text2, ground_label)
         
-            count_N_sample = count_N_sample + len(masked_results)
+                count_N_sample = count_N_sample + 1
 
             # if int(task_id) > 4:
             #     break
@@ -153,8 +226,8 @@ def main(model_1, model_2, file_path, device1, device2):
 if __name__ == "__main__":
 
     # 指定GPU设备：
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'

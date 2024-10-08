@@ -185,46 +185,52 @@ def compute_average_similarity(model1, model2, inputs1, inputs2):
     return avg_similarity
 
 
-# 指定GPU设备：
-device_model1 = torch.device("cuda:0")  # 第x块GPU
-device_model2 = torch.device("cuda:1")  # 第y块GPU
+def main(model_1, model_2, file_path, device1, device2):
 
-# 设置模型和输入
-model_7b        = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    model1, tokenizer1 = load_model(model_1, device1)
+    model2, tokenizer2 = load_model(model_2, device2)
 
-model1, tokenizer1 = load_model(model_7b, device_model1)
-model2, tokenizer2 = load_model(model_7b_Python, device_model2)
+    model1.half()
+    model2.half()
 
-model1.half()
-model2.half()
+    # 切换到evaluation模式
+    # model1.eval()
+    # model2.eval()
 
-# 切换到evaluation模式
-# model1.eval()
-# model2.eval()
+    with jsonlines.open(file_path) as reader:
+        for obj in reader:
+            task_id = obj.get('task_id')
+            prompt = obj.get('prompt')
+            # refer = obj.get('canonical_solution')
+            # prompt = "def fibonacci("
+            print(f"Task ID: {task_id}")
+            # print(f"Prompt: \n{prompt}")
 
-# 打开jsonl文件并遍历
-file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+            inputs1 = tokenizer1(prompt, return_tensors='pt').to(device1)
 
-i = 0
-with jsonlines.open(file_path) as reader:
-    for obj in reader:
-        task_id = obj.get('task_id')
-        prompt = obj.get('prompt')
-        # refer = obj.get('canonical_solution')
-        # prompt = "def fibonacci("
-        print(f"Task ID: {task_id}")
-        # print(f"Prompt: \n{prompt}")
+            inputs2 = tokenizer2(prompt, return_tensors='pt').to(device2)
 
-        inputs1 = tokenizer1(prompt, return_tensors='pt').to(device_model1)
+            avg_similarity = compute_average_similarity(model1, model2, inputs1, inputs2)
+            print(avg_similarity)
 
-        inputs2 = tokenizer2(prompt, return_tensors='pt').to(device_model2)
 
-        avg_similarity = compute_average_similarity(model1, model2, inputs1, inputs2)
-        print(avg_similarity)
-        i = i + 1
-        if i == 10:
-            break
-        
-print(f"global precision count:{precision_count}")
+            
+    print(f"global precision count:{precision_count}")
 
+if __name__ == "__main__":
+
+    # 指定GPU设备：
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
+
+    device_model1 = 'cpu'
+    device_model2 = 'cpu'
+
+    # 设置模型和输入
+    model_1 = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf" # "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+
+    # 打开jsonl文件并遍历
+    file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+
+    main(model_1, model_2, file_path, device_model1, device_model2)

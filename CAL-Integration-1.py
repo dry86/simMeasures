@@ -127,8 +127,8 @@ def main(model1_path, model2_path, device1, device2):
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 16:
-        #     continue
+        if i < 26:
+            continue
 
         # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
         layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)
@@ -158,11 +158,11 @@ def main(model1_path, model2_path, device1, device2):
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:1")  # 第x块GPU
-    device_model2 = torch.device("cuda:2")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
-    device_model1 = 'cpu'
-    device_model2 = 'cpu'
+    # device_model1 = 'cpu'
+    # device_model2 = 'cpu'
 
     # 模型和数据路径
     pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/CPP"

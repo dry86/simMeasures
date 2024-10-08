@@ -41,9 +41,7 @@ def main(model_1, model_2, file_path, device1, device2):
             task_id = obj.get('task_id')
             prompt = obj.get('prompt')
             refer = obj.get('canonical_solution')
-            # prompt = "def fibonacci("
             print(f"Task ID: {task_id}")
-            # print(f"Prompt: {prompt}")
                 
             # 生成模型的logits, probabilities输出
             inputs = tokenizer1(prompt, return_tensors='pt').to(device1)
@@ -72,7 +70,7 @@ if __name__ == "__main__":
     device_model1 = torch.device("cuda:0")  # 第x块GPU
     device_model2 = torch.device("cuda:1")  # 第y块GPU
 
-    # device_model1 = 'cpu'
+    device_model1 = 'cpu'
     device_model2 = 'cpu'
 
     # 设置模型和输入
