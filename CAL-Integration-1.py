@@ -161,8 +161,8 @@ if __name__ == "__main__":
     device_model1 = torch.device("cuda:2")  # 第x块GPU
     device_model2 = torch.device("cuda:3")  # 第y块GPU
 
-    # device_model1 = 'cpu'
-    # device_model2 = 'cpu'
+    device_model1 = 'cpu'
+    device_model2 = 'cpu'
 
     # 模型和数据路径
     pt_model_7b = "/newdisk/public/wws/simMeasures/pt_file/CPP"

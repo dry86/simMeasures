@@ -76,29 +76,9 @@ def is_multi_token(tokenizer, text: str):
         return False
 
 # 定义生成文本函数
-def generate_text(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
+def generate_outputs(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 6):
     """
-    基于给定的 prompt 生成新的文本。
-    """
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    # input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(device)
-    output = model.generate(input_ids, 
-                            attention_mask = attention_mask,
-                            max_new_tokens = max_new_tokens, 
-                            do_sample=True, 
-                            top_p=0.9, 
-                            temperature=0.1, 
-                            pad_token_id = tokenizer.eos_token_id) #, do_sample=True, top_p=0.9, temperature=0.1, num_return_sequences=1, repetition_penalty=0.9, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id 
-    output = output[0]
-    var = output[input_ids.shape[1]:]
-    generated_text = tokenizer.decode(output[input_ids.shape[1]:], skip_special_tokens=True)
-    return generated_text
-
-def generate_text_with_logits(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 10):
-    """
-    基于给定的 prompt 生成新的文本，并返回生成过程中每个token的logits。
+    基于给定的 prompt 生成新的文本，并返回生成过程中每个token的logits, probabilities, token id, text。
     """
     # Tokenize prompt
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -147,7 +127,6 @@ def generate_text_with_logits(model, tokenizer, prompt: str, device: torch.devic
 
     return logits_first_token[0], probabilities_first_token[0], gen_first_token, gen_text
 
-
 def cal_mDis(str1: str, str2: str) -> int:
     # Check if the two strings are identical
     if str1 == str2:
@@ -155,6 +134,32 @@ def cal_mDis(str1: str, str2: str) -> int:
     else:
         return 1
 
+# calc softPred
+def cal_norm_of_soft_prediction_diff(O, O_prime):
+    """
+    计算两个输出O和O'之间的Norm of Soft Prediction Difference
+    O和O'为两个模型的输出，形状为(C)，C是类数
+    """
+
+    # # 获取两者的形状，确保两个张量在形状上相同
+    # min_length = min(O.shape[2], O_prime.shape[2])
+
+    # # 截取logits的最后一维，使得它们形状一致
+    # O_trimmed = O[:, :, :min_length]
+    # O_prime_trimmed = O_prime[:, :, :min_length]
+
+    # N = O.shape[0]
+    # # 确保两个tensor在相同的设备上
+    # if O_trimmed.device != O_prime_trimmed.device:
+    #     O_prime_trimmed = O_prime_trimmed.to(O_trimmed.device)  # 将tensor2移动到tensor1所在的设备
+    
+    # 计算每个实例对应的欧几里得距离
+    distances = torch.norm(O - O_prime, dim=0)
+    
+    # # 计算平均差异
+    # m_pred_norm_diff = torch.sum(distances) / (2 * O_trimmed.shape[0])
+    
+    return distances
 
 def main(model_1, model_2, file_path, device1, device2):
 
@@ -169,12 +174,16 @@ def main(model_1, model_2, file_path, device1, device2):
     count_qErr_prime = 0
     count_N_sample = 0
 
+
+    count_NormSoftPredDiff_logits = 0
+    count_NormSoftPredDiff_prob = 0
+
     with jsonlines.open(file_path) as reader:
         for obj in tqdm(reader):
             task_id = obj.get('task_id').split('/')[1]
             prompt = obj.get('prompt')
             refer = obj.get('canonical_solution')
-            # print(f"Task ID: {task_id}, Prompt: \n{prompt}")
+            print(f"Task ID: {task_id}")
             ground_truth_code = prompt + refer
             masked_results, ground_labels = mask_code_keywords(ground_truth_code)
 
@@ -187,9 +196,11 @@ def main(model_1, model_2, file_path, device1, device2):
                     print(f"\t ground_label is multi_token: {ground_label}")
                     continue
                 
-                # 生成填充内容
-                logits1, prob1, token1, gen_text1 = generate_text_with_logits(model1, tokenizer1, masked_code, device1)
-                logits2, prob2, token2, gen_text2 = generate_text_with_logits(model2, tokenizer2, masked_code, device2)
+                # 生成 单个token 的 logits, probabilities, token id, text
+                logits1, prob1, token1, gen_text1 = generate_outputs(model1, tokenizer1, masked_code, device1)
+                logits2, prob2, token2, gen_text2 = generate_outputs(model2, tokenizer2, masked_code, device2)
+                logits2 = logits2.to(logits1.device)
+                prob2 = prob2.to(logits1.device)
 
                 # 输出结果
                 print(f"\t ground_label: {ground_label}")
@@ -200,6 +211,9 @@ def main(model_1, model_2, file_path, device1, device2):
                 count_qErr = count_qErr + cal_mDis(gen_text1, ground_label)
                 count_qErr_prime = count_qErr_prime + cal_mDis(gen_text2, ground_label)
         
+                count_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits + cal_norm_of_soft_prediction_diff(logits1, logits2)
+                count_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob + cal_norm_of_soft_prediction_diff(prob1, prob2)
+
                 count_N_sample = count_N_sample + 1
 
             # if int(task_id) > 4:
@@ -221,7 +235,11 @@ def main(model_1, model_2, file_path, device1, device2):
     print(f"\t m_ErrCorrDis2: {m_ErrCorrDis2}")
     print(f"\t m_MinMaxNorm_Dis: {m_MinMaxNorm_Dis}")
 
+    m_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits / (2 * count_N_sample)
+    m_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob / (2 * count_N_sample)
             
+    print(f"\t m_NormSoftPredDiff_logits: {m_NormSoftPredDiff_logits}")
+    print(f"\t m_NormSoftPredDiff_prob: {m_NormSoftPredDiff_prob}")
 
 if __name__ == "__main__":
 

@@ -20,7 +20,7 @@ def load_model_and_tokenizer(model_path: str, device: torch.device):
     return model, tokenizer
 
 # 定义保存到Excel的函数，支持指定工作表
-def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/deepseekercoder/6dot7/results.xlsx"):
+def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/Instruct/results-instruct.xlsx"):
 
     # 如果文件不存在，创建新文件并写入数据
     if not os.path.exists(file_name):
@@ -168,13 +168,13 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
 if __name__ == "__main__":
     # 示例使用
     pwcca_mean = 0.85  # 这是一个示例值
-    print_and_save("PWCCA similarity", pwcca_mean, row=1, sheet="Metrics")
+    # print_and_save("PWCCA similarity", pwcca_mean, row=1, sheet="Metrics")
 
-    pwcca_mean = 0.90
-    print_and_save("PWCCA similarity", pwcca_mean, row=2, sheet="Metrics")
+    # pwcca_mean = 0.90
+    # print_and_save("PWCCA similarity", pwcca_mean, row=2, sheet="Metrics")
 
-    # 示例添加另一个cal_method
-    cosine_sim = 0.78
-    print_and_save("Cosine similarity", cosine_sim, row=1, sheet="Metrics")
+    # # 示例添加另一个cal_method
+    # cosine_sim = 0.78
+    # print_and_save("Cosine similarity", cosine_sim, row=1, sheet="Metrics")
 
-    print_and_save("Cosine similarity", cosine_sim, row=1, sheet="Metrics1")
+    # print_and_save("Cosine similarity", cosine_sim, row=1, sheet="Metrics1")
