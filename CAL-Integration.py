@@ -120,15 +120,15 @@ def main(model1_path, model2_path, device1, device2):
     lang_sheet = model1_path.split('/')[-1] # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
 
     # 获取隐藏层输出
-    hidden_states_model1 = concatenate_hidden_states(model1_path, "dsc6dot7base", device1)
-    hidden_states_model2 = concatenate_hidden_states(model2_path, "dsc6dot7instruct", device2)
+    hidden_states_model1 = concatenate_hidden_states(model1_path, "hsm1", device1)
+    hidden_states_model2 = concatenate_hidden_states(model2_path, "hsm2", device2)
 
     # 获取模型的总层数并计算每一层的CCA相关性得分
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        if i < 29:  
-            continue
+        # if i < 30:  
+        #     continue
 
         # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
         layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)
@@ -147,13 +147,13 @@ def main(model1_path, model2_path, device1, device2):
         # CCA
         calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
         # Alignment
-        cal_Alignment(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # RSM
-        cal_RSM(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # Neighbors
-        cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # Statistic
-        cal_Statistic(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+        # cal_Alignment(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+        # # RSM
+        # cal_RSM(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+        # # Neighbors
+        # cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+        # # Statistic
+        # cal_Statistic(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
 
 
 if __name__ == "__main__":

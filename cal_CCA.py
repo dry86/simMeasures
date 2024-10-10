@@ -123,8 +123,6 @@ def main(model1_path, model2_path, device1, device2):
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        if i < 25:  
-            continue
 
         # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
         layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)

@@ -99,12 +99,12 @@ def generate_outputs(model, tokenizer, prompt: str, device: torch.device, max_ne
         
         # 存储第一个token的logits
         if i == 0:
-            logits_first_token = logits[:, -1, :]  # 只存储当前步最后一个token的logits
+            logits_first_token = logits[:, -1, :] 
         
         # 通过采样策略选择下一个token id
         next_token_id = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(0)
         
-        if next_token_id == tokenizer.eos_token_id: # next_token_id == 2, 表示生成结束
+        if next_token_id == tokenizer.eos_token_id: # next_token_id == 2(</s>), 表示生成结束
             break
 
         # 更新input_ids
@@ -116,9 +116,12 @@ def generate_outputs(model, tokenizer, prompt: str, device: torch.device, max_ne
     gen_text = generated_text[len(prompt):]
     gen_token_id = input_ids[:, input_len:]
 
-    gen_text = gen_text.split()[0]
+    try:
+        gen_text = gen_text.split()[0]
+    except IndexError:
+        gen_text = gen_text
     if is_multi_token(tokenizer, gen_text):
-        print("\t gen_text is multi_token")
+        print(f"\t gen_text is multi_token or blank, not in vocab: '{gen_text}'")
         return -1, -1, -1, -1
     
     gen_first_token = gen_token_id[0][0].item()
@@ -161,6 +164,84 @@ def cal_norm_of_soft_prediction_diff(O, O_prime):
     
     return distances
 
+def cal_surrogate_churn(O, O_prime, alpha=1):
+    """
+    计算 Surrogate Churn
+    O 和 O_prime 是两个模型的logits输出，形状为(C)，其中C是类别数量
+    alpha: 幂指数参数，默认为1
+    """
+    # 确保两个张量的形状相同
+    assert O.shape == O_prime.shape, "Logits tensors must have the same shape"
+    
+    # 计算每个样本的最大logits（用于归一化）
+    O_max = torch.max(O, dim=0, keepdim=True).values
+    O_prime_max = torch.max(O_prime, dim=0, keepdim=True).values
+    
+    # 将 logits 归一化
+    O_normalized = O / O_max
+    O_prime_normalized = O_prime / O_prime_max
+    
+    # 计算归一化 logits 的差值并取绝对值
+    diff = O_normalized**alpha - O_prime_normalized**alpha
+    
+    # 对每个样本求L1范数
+    churn = torch.norm(diff, p=1)
+    
+    return churn
+
+def kl_divergence(p, q):
+    """
+    计算两个概率分布 p 和 q 之间的 KL 散度
+    """
+    p = p + 1e-10  # 避免数值误差
+    q = q + 1e-10
+    return torch.sum(p * torch.log(p / q), dim=0)
+
+def cal_jensen_shannon_divergence(O, O_prime):
+    """
+    计算两个分布 O 和 O_prime 的 Jensen-Shannon 散度
+    O 和 O_prime 形状为 (C)，C 是类别数
+    """
+    # 计算平均分布 O_bar
+    O_bar = (O + O_prime) / 2
+    
+    # 计算 KL 散度
+    kl_O_O_bar = kl_divergence(O, O_bar)
+    kl_O_prime_O_bar = kl_divergence(O_prime, O_bar)
+    
+    # Jensen-Shannon Divergence
+    jsd = (kl_O_O_bar + kl_O_prime_O_bar) 
+    return jsd
+
+def cal_prediction_difference_torch(outputs, p=1):
+    """
+    计算多个模型的 Prediction Difference (PD)，使用 torch 实现。
+    
+    参数:
+    outputs: 一个形状为 (N, C) 的 torch 张量，表示 N 个模型对 C 个类别的输出概率或 logits。
+    p: 范数的类型，默认 p=1（可以是 L1 范数，也可以是 L2 范数）。
+    
+    返回:
+    PD: 预测差异的值
+    """
+    # outputs 的维度为 (N, C)，N 是模型数，C 是类别数
+    N, C = outputs.shape
+    
+    # 计算每个样本的平均输出 (N, C)
+    avg_outputs = torch.mean(outputs, dim=0)
+    
+    # 初始化 PD
+    PD = 0
+    
+    # 计算所有模型的范数差异
+    for O in outputs:
+        PD += torch.norm(O - avg_outputs, p=p)
+    
+    # 最终除以模型数 N
+    PD /= N
+    
+    return PD.item()
+
 def main(model_1, model_2, file_path, device1, device2):
 
     model1, tokenizer1 = load_model_and_tokenizer(model_1, device1)
@@ -174,36 +255,45 @@ def main(model_1, model_2, file_path, device1, device2):
     count_qErr_prime = 0
     count_N_sample = 0
 
-
     count_NormSoftPredDiff_logits = 0
     count_NormSoftPredDiff_prob = 0
+    count_schrun = 0
+    count_jsd = 0
+    count_pd = 0
 
     with jsonlines.open(file_path) as reader:
         for obj in tqdm(reader):
             task_id = obj.get('task_id').split('/')[1]
+
+            # if int(task_id) < 38:
+            #     continue
+
             prompt = obj.get('prompt')
             refer = obj.get('canonical_solution')
             print(f"Task ID: {task_id}")
             ground_truth_code = prompt + refer
             masked_results, ground_labels = mask_code_keywords(ground_truth_code)
 
-            
             # 输出每次 mask 掉后的结果
             for idx, (masked_code, ground_label) in enumerate(zip(masked_results, ground_labels), 1):
                 print(f"Masked Version {idx}:")
 
                 if is_multi_token(tokenizer1, ground_label):
-                    print(f"\t ground_label is multi_token: {ground_label}")
+                    print(f"\t ground_label is multi_token: '{ground_label}'")
                     continue
                 
+                print(f"\t ground_label: {ground_label}")
                 # 生成 单个token 的 logits, probabilities, token id, text
                 logits1, prob1, token1, gen_text1 = generate_outputs(model1, tokenizer1, masked_code, device1)
                 logits2, prob2, token2, gen_text2 = generate_outputs(model2, tokenizer2, masked_code, device2)
+                # gen_text is multi_token
+                if token1 == -1 or token2 == -1:
+                    continue    
                 logits2 = logits2.to(logits1.device)
                 prob2 = prob2.to(logits1.device)
 
                 # 输出结果
-                print(f"\t ground_label: {ground_label}")
+                
                 print(f"\t gen_text1: {gen_text1}")
                 print(f"\t gen_text2: {gen_text2}")
                 print("---------------------------------")
@@ -213,6 +303,10 @@ def main(model_1, model_2, file_path, device1, device2):
         
                 count_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits + cal_norm_of_soft_prediction_diff(logits1, logits2)
                 count_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob + cal_norm_of_soft_prediction_diff(prob1, prob2)
+                count_schrun = count_schrun + cal_surrogate_churn(prob1, prob2)
+                count_jsd = count_jsd + cal_jensen_shannon_divergence(prob1, prob2)
+                prob = torch.stack((prob1, prob2), dim=0)
+                count_pd = count_pd + cal_prediction_difference_torch(prob)
 
                 count_N_sample = count_N_sample + 1
 
@@ -237,9 +331,15 @@ def main(model_1, model_2, file_path, device1, device2):
 
     m_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits / (2 * count_N_sample)
     m_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob / (2 * count_N_sample)
+    m_SChrun = count_schrun / (2 * count_N_sample)
+    m_JSD = count_jsd / (2 * count_N_sample)
+    m_PD = count_pd / count_N_sample
             
     print(f"\t m_NormSoftPredDiff_logits: {m_NormSoftPredDiff_logits}")
     print(f"\t m_NormSoftPredDiff_prob: {m_NormSoftPredDiff_prob}")
+    print(f"\t m_SChrun: {m_SChrun}")
+    print(f"\t m_JSD: {m_JSD}")
+    print(f"\t m_PD: {m_PD}")
 
 if __name__ == "__main__":
 
