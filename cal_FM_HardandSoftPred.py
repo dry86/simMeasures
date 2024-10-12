@@ -340,6 +340,7 @@ def main(model_1, model_2, file_path, device1, device2):
     print(f"\t m_SChrun: {m_SChrun}")
     print(f"\t m_JSD: {m_JSD}")
     print(f"\t m_PD: {m_PD}")
+    print(f"\t N: {count_N_sample}")
 
 if __name__ == "__main__":
 
@@ -351,10 +352,10 @@ if __name__ == "__main__":
     # device_model2 = 'cpu'
 
     # 设置模型和输入
-    model_1 = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf" # "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct" 
 
     # 打开jsonl文件并遍历
-    file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset
+    file_path = '/newdisk/public/wws/humaneval-x-main/data/cpp/data/humaneval.jsonl'  # Dataset
 
     main(model_1, model_2, file_path, device_model1, device_model2)
