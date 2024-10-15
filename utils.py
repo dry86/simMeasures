@@ -20,7 +20,7 @@ def load_model_and_tokenizer(model_path: str, device: torch.device):
     return model, tokenizer
 
 # 定义保存到Excel的函数，支持指定工作表
-def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/deepseekercoder/7b/results.xlsx"):
+def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/results-dsc7b-codellama7b.xlsx"):
 
     # 如果文件不存在，创建新文件并写入数据
     if not os.path.exists(file_name):
@@ -62,7 +62,7 @@ def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/
         sheet_to_format = book[sheet]
         
         # 设置单元格格式为浮点型数字显示
-        for row_cells in sheet_to_format.iter_rows(min_row=2, max_row=row, min_col=1, max_col=len(df_existing.columns)):
+        for row_cells in sheet_to_format.iter_rows(min_row=2, max_row=row+1, min_col=1, max_col=len(df_existing.columns)):
             for cell in row_cells:
                 if isinstance(cell.value, float):  # 只对小数类型的单元格进行格式设置
                     cell.number_format = '0.0000000000000000'  # 设置足够的位数显示小数点后的所有位数

@@ -54,8 +54,7 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
 if __name__ == "__main__":
     """
     how to use:
-        修改 padding_max_length 大小, 
-        注意更改 data_file 路径, 相匹配
+        修改以下四个参数↓↓↓
     """
 
     padding_max_length = {  # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
@@ -68,15 +67,15 @@ if __name__ == "__main__":
 
 
     # 指定GPU设备
-    device_model = torch.device("cuda:1")
+    device_model = torch.device("cuda:0")
 
     # 模型和数据路径
-    model_path = "/newdisk/public/wws/model_dir/deepseek-coder/7b-base-instruct-v1.5"
-    model_idx = "dsc7binstructv1dot5"
+    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-13b"
+    model_idx = "codeLlama-13b"
     
     # 设置的数据集语言
     lang = "Python"
-
+    
     # 调用主函数
     main(model_path, model_idx, lang, padding_max_length[lang], device_model)
     

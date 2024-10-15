@@ -2,6 +2,7 @@ import os
 import sys
 import torch
 import jsonlines
+import numpy as np
 # 将CodeBLEU目录添加到系统路径中
 sys.path.append(os.path.abspath("/newdisk/public/wws/simMeasures/CodeBLEU"))
 sys.path.append(os.path.abspath("/newdisk/public/wws/simMeasures/bleu-evaluator"))
@@ -44,6 +45,8 @@ def calculate_PBM_BLEU(pred1, pred2, references):
 
     pbmBLEU_score = abs(bleu_score1 - bleu_score2)
     print(f"\t{'pbmBLEU_score':<20}: {pbmBLEU_score:.16f}")
+
+    return bleu_score1, bleu_score2, pbmBLEU_score
 
 # codeBLEU
 def calculate_codebleu(ref_texts, hyp_texts, lang, params='0.25,0.25,0.25,0.25'):
@@ -112,20 +115,28 @@ def calculate_PBM_codeBLEU(pred1, pred2, ref):
     pbmCodeBLUE_score = abs(codebleu_score1 - codebleu_score2)
     print(f"\t{'pbmCodeBLUE_score':<20}: {pbmCodeBLUE_score:.16f}")
 
+    return codebleu_score1, codebleu_score2, pbmCodeBLUE_score
+
 def main(model_1, model_2, file_path, device1, device2):
 
     model1, tokenizer1 = load_model_and_tokenizer(model_1, device1)
     model2, tokenizer2 = load_model_and_tokenizer(model_2, device2)
+
+    bleu_model1 = []
+    bleu_model2 = []
+    bleu_diff = []
+
+    codebleu_model1 = []
+    codebleu_model2 = []
+    codebleu_diff = []  
 
     with jsonlines.open(file_path) as reader:
         for obj in reader:
             task_id = obj.get('task_id')
             prompt = obj.get('prompt')
             refer = prompt + obj.get('canonical_solution')
-            # prompt = "def fibonacci("
             print(f"Task ID: {task_id}")
                 
-
             # 输出所有层的CCA分数后，生成Prompt的模型输出
             inputs1 = tokenizer1(prompt, return_tensors='pt').to(device1)
             inputs2 = tokenizer2(prompt, return_tensors='pt').to(device2)
@@ -140,22 +151,40 @@ def main(model_1, model_2, file_path, device1, device2):
             # print(generated_text_model1)
             # print("\nGenerated text by model_2:\n")
             # print(generated_text_model2)
-            calculate_PBM_codeBLEU(generated_text_model1, generated_text_model2, refer)
-            calculate_PBM_BLEU(generated_text_model1, generated_text_model2, refer)
+            bleu_score1, bleu_score2, bleu_scoreDiff = calculate_PBM_BLEU(generated_text_model1, generated_text_model2, refer)
+            codebleu_score1, codebleu_score2, codebleu_scoreDiff = calculate_PBM_codeBLEU(generated_text_model1, generated_text_model2, refer)
+
+            bleu_model1.append(bleu_score1)
+            bleu_model2.append(bleu_score2)
+            bleu_diff.append(bleu_scoreDiff)
+
+            codebleu_model1.append(codebleu_score1)
+            codebleu_model2.append(codebleu_score2)
+            codebleu_diff.append(codebleu_scoreDiff)
+            print("------------------------------------------")
+
+    print(f"bleu_model1: {np.mean(bleu_model1)}")
+    print(f"bleu_model2: {np.mean(bleu_model2)}")
+    print(f"bleu_diff: {np.mean(bleu_diff)}")
+
+    print(f"codebleu_model1: {np.mean(codebleu_model1)}")
+    print(f"codebleu_model2: {np.mean(codebleu_model2)}")
+    print(f"codebleu_diff: {np.mean(codebleu_diff)}")
+
 
 
 if __name__ == "__main__":
 
     # 指定GPU设备：
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
-    device_model1 = 'cpu'
-    device_model2 = 'cpu'
+    # device_model1 = 'cpu'
+    # device_model2 = 'cpu'
 
     # 设置模型和输入
-    model_1 = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct-hf" # "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct" 
 
     # 打开jsonl文件并遍历
     file_path = '/newdisk/public/wws/humaneval-x-main/data/python/data/humaneval.jsonl'  # Dataset

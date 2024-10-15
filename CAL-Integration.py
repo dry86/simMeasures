@@ -115,19 +115,19 @@ def calculate_cca(acts1, acts2, idx, sheet):
     print_and_save("PWCCA", pwcca_mean, row=idx, sheet=sheet)
 
 
-def main(model1_path, model2_path, device1, device2):
-    """主函数：加载模型、读取数据、计算CCA相似性"""
-    lang_sheet = model1_path.split('/')[-1] # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
+def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device2):
+    """主函数：加载模型、读取数据、计算相似性"""
+    lang_sheet = lang # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
 
     # 获取隐藏层输出
-    hidden_states_model1 = concatenate_hidden_states(model1_path, "dsc7bv1dot5", device1)
-    hidden_states_model2 = concatenate_hidden_states(model2_path, "dsc7binstructv1dot5", device2)
+    hidden_states_model1 = concatenate_hidden_states(model1_path, model_idx1, device1)
+    hidden_states_model2 = concatenate_hidden_states(model2_path, model_idx2, device2)
 
     # 获取模型的总层数并计算每一层的CCA相关性得分
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 30:  
+        # if i < 29:  
         #     continue
 
         # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
@@ -164,12 +164,19 @@ if __name__ == "__main__":
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
 
-    # 模型和数据路径
-    pt_model_1 = "/newdisk/public/wws/simMeasures/pt_file/Python/dsc7bv1dot5"
-    pt_model_2 = "/newdisk/public/wws/simMeasures/pt_file/Python/dsc7binstructv1dot5"
-    
-    # 调用主函数
-    main(pt_model_1, pt_model_2, device_model1, device_model2)
-            
+    # 参数设置
 
+    prefix_pt_model = "/newdisk/public/wws/simMeasures/pt_file/"
+    
+    lang = "Python"
+    model_idx1 = "codeLlama7b"
+    model_idx2 = "dsc7bv1dot5"
+    
+    pt_model_1 = prefix_pt_model + lang + "/" + model_idx1
+    pt_model_2 = prefix_pt_model + lang + "/" + model_idx2
+
+    # 调用主函数
+    main(pt_model_1, pt_model_2, lang, model_idx1, model_idx2, device_model1, device_model2)
+            
+    print("Python, codeLlama7b dsc7bv1dot5, CCA epsilon=1e-8")
 
