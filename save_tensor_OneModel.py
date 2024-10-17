@@ -16,7 +16,7 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
 
     data_file_path = f"/newdisk/public/wws/humaneval-x-main/data/{language.lower()}/data/humaneval.jsonl"
 
-    pt_dir = f"/newdisk/public/wws/simMeasures/pt_file/{lang}/"
+    pt_dir = f"/newdisk/public/wws/simMeasures/pt_file/test/{lang}/"
     save_dir = pt_dir + model_idx + "/"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -41,13 +41,27 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
                                            ).to(device1)
 
                 # 获取隐藏层输出
-                hidden_states_model1 = tokens_get_hidden_states(model1, inputs_model1, device1)
+                outputs, hidden_states_model1 = tokens_get_hidden_states(model1, inputs_model1, device1)
 
+                # 获取logits
+                logits = outputs.logits  # shape = (batch_size, seq_len, vocab_size)
+                
+                # 获取每个位置上最可能的token的id
+                predicted_token_ids = torch.argmax(logits, dim=-1)  # shape = (batch_size, seq_len)
+                
+                # 使用tokenizer将token id转换为文本
+                predicted_texts = [tokenizer1.decode(ids, skip_special_tokens=True) for ids in predicted_token_ids]
+
+                # 打印转换后的文本
+                for text in predicted_texts:
+                    print(text)
+                
                 # 保存 hidden_states 到文件
-                torch.save(hidden_states_model1, f"{save_dir}{model_idx}_batch_{task_number}.pt")
+                # torch.save(hidden_states_model1, f"{save_dir}{model_idx}_batch_{task_number}.pt")
 
                 # 清空prompts，准备下一个batch
                 prompts = []
+                break
 
 
 
@@ -67,11 +81,11 @@ if __name__ == "__main__":
 
 
     # 指定GPU设备
-    device_model = torch.device("cuda:0")
+    device_model = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-13b"
-    model_idx = "codeLlama-13b"
+    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_idx = "codeLlama-7b-Instruct"
     
     # 设置的数据集语言
     lang = "Python"

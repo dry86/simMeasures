@@ -61,6 +61,31 @@ def concatenate_hidden_states(directory, keyword, device):
 
     return all_hidden_states
 
+def concatenate_final_token_hidden_states(directory, keyword, device):
+    """加载并拼接目录中以特定关键字开头的所有.pt文件的隐藏状态张量"""
+    keyword = keyword + '_'
+    hidden_states_last_layer_list = []
+
+    # 获取符合条件的文件并按批次号排序
+    pt_files = [filename for filename in os.listdir(directory) if filename.startswith(keyword) and filename.endswith('.pt')]
+    sorted_pt_files = sorted(pt_files, key=lambda x: get_batch_number(x, keyword))
+
+    # 遍历排序后的文件名并加载张量
+    for filename in sorted_pt_files:
+        file_path = os.path.join(directory, filename)
+        hidden_states = load_hidden_states(file_path, device)
+        hidden_states_last_layer_list.append(hidden_states[-1])    # only use the last layer
+
+    # 确保至少有一个张量可以拼接
+    if not hidden_states_last_layer_list:
+        raise ValueError("没有找到符合条件的.pt文件！")
+
+    # 按第0维度拼接
+    layer_activations = [hidden_states for hidden_states in hidden_states_last_layer_list]
+    concatenated_last_layer = torch.cat(layer_activations, dim=0)  # 在 batch 维度拼接
+
+    return concatenated_last_layer
+
 # 获取特定隐藏层输出
 def get_special_hidden_states(model, tokenizer, input_text, layer_indices, device):
     inputs = tokenizer(input_text, return_tensors='pt').to(device)  # 将输入移动到指定的GPU上
@@ -103,10 +128,9 @@ def tokens_get_hidden_states(model, inputs, device):
         # 获取所有层的隐藏状态，outputs.hidden_states 是一个元组，包含每一层的输出
         hidden_states = outputs.hidden_states
         
-        # 将每一层的输出移到指定设备上
-        # hidden_states = [layer_hidden_state.to(device) for layer_hidden_state in hidden_states]
-        
-        return hidden_states
+
+
+        return outputs, hidden_states
 
 
 # 获取logits输出

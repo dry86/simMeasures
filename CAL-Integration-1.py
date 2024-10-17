@@ -1,5 +1,5 @@
 import torch
-from getHiddenStates import concatenate_hidden_states
+from getHiddenStates import concatenate_hidden_states, concatenate_final_token_hidden_states
 import numpy as np
 from example import cca_core
 from tqdm import tqdm
@@ -8,6 +8,7 @@ from utils import print_and_save
 from repsim.measures.procrustes import orthogonal_procrustes
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
+import time  # 导入 time 模块
 
 def cal_Statistic(acts1, acts2, shape, idx, sheet):
 
@@ -69,9 +70,10 @@ def cal_RSM(acts1, acts2, shape, idx, sheet):
     score = eigenspace_overlap(acts1, acts2, shape)
     print_and_save("EOlapScore", score, idx, sheet)
 
-    gulp = Gulp()
-    score = gulp(acts1, acts2, shape)
-    print_and_save("Gulp", score, idx, sheet)
+    # assert K <= n  AssertionError
+    # gulp = Gulp()
+    # score = gulp(acts1, acts2, shape)
+    # print_and_save("Gulp", score, idx, sheet)
 
 def cal_Alignment(acts1, acts2, shape, idx, sheet):
 
@@ -115,61 +117,69 @@ def calculate_cca(acts1, acts2, idx, sheet):
     print_and_save("PWCCA", pwcca_mean, row=idx, sheet=sheet)
 
 
-def main(model1_path, model2_path, device1, device2):
+def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device2):
     """主函数：加载模型、读取数据、计算相似性"""
-    lang_sheet = model1_path.split('/')[-1] # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
+    lang_sheet = lang # 拿到模型对比的数据集的语言, 在写入时作为sheet名称
 
-    # 获取隐藏层输出
-    hidden_states_model1 = concatenate_hidden_states(model1_path, "dsc7bv1dot5", device1)
-    hidden_states_model2 = concatenate_hidden_states(model2_path, "dsc7binstructv1dot5", device2)
+    # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
+    last_layer_hidden_states_model1 = concatenate_final_token_hidden_states(model1_path, model_idx1, device1)
+    last_layer_hidden_states_model2 = concatenate_final_token_hidden_states(model2_path, model_idx2, device2)
 
-    # 获取模型的总层数并计算每一层的CCA相关性得分
-    num_layers = len(hidden_states_model1)
-    for i in tqdm(range(num_layers)):
+    # 通过 [:, -1, :] 只取(batch_size, max_length, hidden_size)中的最后一个token -> acts = (batch_size, hidden_size)
+    acts1 = last_layer_hidden_states_model1[:, -1, :]
+    acts2 = last_layer_hidden_states_model2[:, -1, :]
 
-        if i < 28:
-            continue
+    # acts2_device = acts2.to(acts1.device)  # 将 acts2 移动到 acts1 所在的设备
 
-        # 先将每层所有数据的隐藏层激活拼接成三维矩阵 (batch_size, max_length, hidden_size)
-        layer_activations_model1 = hidden_states_model1[i]  # 形状 (batch_size, max_length, hidden_size)
-        layer_activations_model2 = hidden_states_model2[i]  # 形状 (batch_size, max_length, hidden_size)
+    acts1_numpy = acts1.cpu().numpy()
+    acts2_numpy = acts2.cpu().numpy()
+    shape = "nd"
 
-        # 通过 view() 函数将其变成二维矩阵 (batch_size * max_length, hidden_size)
-        acts1 = layer_activations_model1.view(-1, layer_activations_model1.shape[-1])
-        acts2 = layer_activations_model2.view(-1, layer_activations_model2.shape[-1])
-
-        # acts2_device = acts2.to(acts1.device)  # 将 acts2 移动到 acts1 所在的设备
-
-        acts1_numpy = acts1.cpu().numpy()
-        acts2_numpy = acts2.cpu().numpy()
-        shape = "nd"
-
-        # CCA
-        calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
-        # Alignment
-        cal_Alignment(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # RSM
-        cal_RSM(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # Neighbors
-        cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
-        # Statistic
-        cal_Statistic(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+    i = 0
+    # CCA
+    # calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
+    # Alignment
+    # cal_Alignment(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+    # # RSM
+    # cal_RSM(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+    # Neighbors
+    cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
+    # Statistic
+    cal_Statistic(acts1_numpy, acts2_numpy, shape, i, lang_sheet)
 
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:2")  # 第x块GPU
-    device_model2 = torch.device("cuda:3")  # 第y块GPU
+    # 记录开始时间
+    start_time = time.time()    
+
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
 
-    # 模型和数据路径
-    pt_model_1 = "/newdisk/public/wws/simMeasures/pt_file/Python/dsc7bv1dot5"
-    pt_model_2 = "/newdisk/public/wws/simMeasures/pt_file/Python/dsc7binstructv1dot5"
+    # 参数设置
+
+    prefix_pt_model = "/newdisk/public/wws/simMeasures/pt_file/"
     
+    lang = "Python"
+    model_idx1 = "codeLlama7bInstruct"
+    model_idx2 = "codeLlama7bPython"
+    
+    pt_model_1 = prefix_pt_model + lang + "/" + model_idx1
+    pt_model_2 = prefix_pt_model + lang + "/" + model_idx2
+
     # 调用主函数
-    main(pt_model_1, pt_model_2, device_model1, device_model2)
+    main(pt_model_1, pt_model_2, lang, model_idx1, model_idx2, device_model1, device_model2)
             
+    print("Python, codeLlama7b Instruct Python, CCA epsilon=1e-8")
+
+
+    # 记录结束时间
+    end_time = time.time()
+    # 计算并打印程序运行时间
+    elapsed_time = end_time - start_time
+    print(f"Program runtime: {elapsed_time:.2f} seconds")    
 
 

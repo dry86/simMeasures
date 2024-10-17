@@ -123,7 +123,7 @@ def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device
     hidden_states_model1 = concatenate_hidden_states(model1_path, model_idx1, device1)
     hidden_states_model2 = concatenate_hidden_states(model2_path, model_idx2, device2)
 
-    # 获取模型的总层数并计算每一层的CCA相关性得分
+    # 获取模型的总层数并计算每一层的 score
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
@@ -158,8 +158,8 @@ def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device
 
 if __name__ == "__main__":
 
-    device_model1 = torch.device("cuda:2")  # 第x块GPU
-    device_model2 = torch.device("cuda:3")  # 第y块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
@@ -169,8 +169,8 @@ if __name__ == "__main__":
     prefix_pt_model = "/newdisk/public/wws/simMeasures/pt_file/"
     
     lang = "Python"
-    model_idx1 = "codeLlama7b"
-    model_idx2 = "dsc7bv1dot5"
+    model_idx1 = "codeLlama7bInstruct"
+    model_idx2 = "codeLlama7bPython"
     
     pt_model_1 = prefix_pt_model + lang + "/" + model_idx1
     pt_model_2 = prefix_pt_model + lang + "/" + model_idx2
@@ -178,5 +178,5 @@ if __name__ == "__main__":
     # 调用主函数
     main(pt_model_1, pt_model_2, lang, model_idx1, model_idx2, device_model1, device_model2)
             
-    print("Python, codeLlama7b dsc7bv1dot5, CCA epsilon=1e-8")
+    print("Python, codeLlama7b Instruct Python, CCA epsilon=1e-8")
 

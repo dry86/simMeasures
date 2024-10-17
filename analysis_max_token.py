@@ -17,7 +17,7 @@ def pad_to_max_length(tensor_list, tokenizer):
     
     return torch.stack(padded_tensors)
 
-def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=20):
+def main(model1_path, model2_path, data_file_path, device1, device2):
 
     # 加载模型和tokenizer
     model1, tokenizer1 = load_model(model1_path, device1)
@@ -25,8 +25,8 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
     
     # 使用 eos_token 作为 pad_token
     tokenizer1.pad_token = tokenizer1.eos_token
-    tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer1.padding_side = "right"   # 使用EOS时,向右填充
+    tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer2.padding_side = "right"
 
     prompts = []
@@ -58,7 +58,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2, batch_size=
     stats = pd.DataFrame(lengths1, columns=['length']).describe(percentiles=[0.9,0.95])
     print(stats)
     lengths2 = [len(seq[0]) for seq in token2]
-    pd.DataFrame(lengths2, columns=['length']).describe(percentiles=[0.9,0.95])
+    stats = pd.DataFrame(lengths2, columns=['length']).describe(percentiles=[0.9,0.95])
     print(stats)
 
 if __name__ == "__main__":
@@ -68,17 +68,17 @@ if __name__ == "__main__":
         修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
-    device_model1 = torch.device("cuda:0")
-    device_model2 = torch.device("cuda:1")
+    device_model1 = torch.device("cuda:2")
+    device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_7b = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b"
-    model_7b_Python = "/newdisk/public/wws/text-generation-webui/models/codeLlama-7b-Python"
+    model_1 = "/newdisk/public/wws/model_dir/deepseek-coder/7b-base-v1.5"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/go/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/humaneval-x-main/data/java/data/humaneval.jsonl"
 
     # 调用主函数
-    main(model_7b, model_7b_Python, data_file, device_model1, device_model2)
+    main(model_1, model_2, data_file, device_model1, device_model2)
     
 
 
