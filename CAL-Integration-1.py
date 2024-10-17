@@ -164,7 +164,7 @@ if __name__ == "__main__":
     prefix_pt_model = "/newdisk/public/wws/simMeasures/pt_file/"
     
     lang = "Python"
-    model_idx1 = "codeLlama7bInstruct"
+    model_idx1 = "codeLlama7b"
     model_idx2 = "codeLlama7bPython"
     
     pt_model_1 = prefix_pt_model + lang + "/" + model_idx1
@@ -172,8 +172,8 @@ if __name__ == "__main__":
 
     # 调用主函数
     main(pt_model_1, pt_model_2, lang, model_idx1, model_idx2, device_model1, device_model2)
-            
-    print("Python, codeLlama7b Instruct Python, CCA epsilon=1e-8")
+    
+    print("Python, codeLlama7b Python, CCA epsilon=1e-8")
 
 
     # 记录结束时间

@@ -353,9 +353,9 @@ if __name__ == "__main__":
 
     # 设置模型和输入
     model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/CodeLlama-7b-Instruct" 
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct" 
 
     # 打开jsonl文件并遍历
-    file_path = '/newdisk/public/wws/humaneval-x-main/data/cpp/data/humaneval.jsonl'  # Dataset
+    file_path = '/newdisk/public/wws/Dataset/humaneval-x-main/data/cpp/data/humaneval.jsonl'  # Dataset
 
     main(model_1, model_2, file_path, device_model1, device_model2)
