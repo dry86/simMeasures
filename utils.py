@@ -20,7 +20,7 @@ def load_model_and_tokenizer(model_path: str, device: torch.device):
     return model, tokenizer
 
 # 定义保存到Excel的函数，支持指定工作表
-def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/results-last_final-codellama7b-i-p.xlsx"):
+def save_to_excel(cal_method, score, row, sheet, file_name="/newdisk/public/wws/simMeasures/results/results-last_layer_final_token.xlsx"):
 
     # 如果文件不存在，创建新文件并写入数据
     if not os.path.exists(file_name):

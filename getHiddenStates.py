@@ -61,7 +61,7 @@ def concatenate_hidden_states(directory, keyword, device):
 
     return all_hidden_states
 
-def concatenate_final_token_hidden_states(directory, keyword, device):
+def concatenate_last_layer_hidden_states(directory, keyword, device):
     """加载并拼接目录中以特定关键字开头的所有.pt文件的隐藏状态张量"""
     keyword = keyword + '_'
     hidden_states_last_layer_list = []
