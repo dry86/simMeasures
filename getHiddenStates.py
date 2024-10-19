@@ -89,17 +89,31 @@ def concatenate_last_layer_hidden_states(directory, keyword, device):
 # 获取特定隐藏层输出
 def get_special_hidden_states(model, tokenizer, input_text, layer_indices, device):
     inputs = tokenizer(input_text, return_tensors='pt').to(device)  # 将输入移动到指定的GPU上
-    outputs = model(**inputs)
+    with torch.no_grad():
+        outputs = model(**inputs, output_hidden_states=True)
     
     # 提取指定层的隐藏状态，并将其转移到CPU以便后续处理
     hidden_states = outputs.hidden_states
     return [hidden_states[i].detach().cpu().numpy() for i in layer_indices]
 
+# 获取特定隐藏层输出
+def get_last_layer_hidden_states(model, inputs):
+    with torch.no_grad():
+        outputs = model(**inputs, output_hidden_states=True)
+    
+    # 提取所有层的隐藏状态
+    hidden_states = outputs.hidden_states
+    
+    # 提取最后一层隐藏层的隐藏状态
+    last_hidden_state = hidden_states[-1]
+    
+    return outputs, last_hidden_state
+
 # 获取隐藏层输出
 def get_hidden_states(model, tokenizer, input_text, device):
     inputs = tokenizer(input_text, return_tensors='pt').to(device)  # 将输入移动到指定的GPU上
     with torch.no_grad():
-        outputs = model(**inputs)
+        outputs = model(**inputs, output_hidden_states=True)
     
     # 提取所有层的隐藏状态，并将其转移到CPU以便后续处理
     hidden_states = outputs.hidden_states
@@ -107,16 +121,6 @@ def get_hidden_states(model, tokenizer, input_text, device):
     # return [layer_hidden_state.detach().cpu().numpy() for layer_hidden_state in hidden_states]
 
 def tokens_get_hidden_states(model, inputs, device):
-    """
-    获取模型的所有隐藏层输出
-    参数:
-    - model: 已加载的模型
-    - inputs: tokenizer 编码后的输入
-    - device: 模型运行的设备 (e.g., 'cuda' or 'cpu')
-    
-    返回:
-    - 一个包含所有隐藏层输出的列表，每个元素对应一层的隐藏状态
-    """
     # 确保模型处于评估模式
     model.eval()
     
@@ -127,8 +131,6 @@ def tokens_get_hidden_states(model, inputs, device):
         
         # 获取所有层的隐藏状态，outputs.hidden_states 是一个元组，包含每一层的输出
         hidden_states = outputs.hidden_states
-        
-
 
         return outputs, hidden_states
 

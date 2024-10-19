@@ -175,13 +175,15 @@ def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device
     # acts1 = last_layer_hidden_states_model1[torch.arange(batch_size_1), last_non_padding_index_1, :]
     # acts2 = last_layer_hidden_states_model2[torch.arange(batch_size_2), last_non_padding_index_2, :]
 
-    next_token_index_1 = torch.clamp(last_non_padding_index_1 - 2, max=262 - 1)
-    next_token_index_2 = torch.clamp(last_non_padding_index_2 - 2, max=262 - 1)
+    # 获取最后一个有意义 token 的下一个 token 的索引
+    next_token_index_1 = torch.clamp(last_non_padding_index_1 - 1, max=262 - 1) 
+    next_token_index_2 = torch.clamp(last_non_padding_index_2 - 1, max=262 - 1)
     acts1 = last_layer_hidden_states_model1[torch.arange(batch_size_1), next_token_index_1, :]
     acts2 = last_layer_hidden_states_model2[torch.arange(batch_size_2), next_token_index_2, :]
 
     # acts1 = last_layer_hidden_states_model1[:, last_non_padding_index_1, :]   # 得到(164, 164, 4096)
     # acts2 = last_layer_hidden_states_model2[:, last_non_padding_index_2, :]
+
     # acts1 = last_layer_hidden_states_model1[:, -1, :]
     # acts2 = last_layer_hidden_states_model2[:, -1, :]
 
@@ -189,7 +191,7 @@ def main(model1_path, model2_path, lang, model_idx1, model_idx2, device1, device
     acts2_numpy = acts2.cpu().numpy()
     shape = "nd"
 
-    i = 10  
+    i = 5
     # CCA
     # calculate_cca(acts1_numpy, acts2_numpy, i, lang_sheet)
     # Alignment
@@ -218,7 +220,7 @@ if __name__ == "__main__":
     prefix_pt_model = "/newdisk/public/wws/simMeasures/pt_file/"
     
     lang = "Python"
-    model_idx1 = "codeLlama-7b"
+    model_idx1 = "codeLlama-7b-Instruct"
     model_idx2 = "codeLlama-7b-Python"
     
     pt_model_1 = prefix_pt_model + lang + "/" + model_idx1

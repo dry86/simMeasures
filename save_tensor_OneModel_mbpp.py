@@ -1,9 +1,9 @@
 import torch
-from getHiddenStates import load_model, tokens_get_hidden_states
+from getHiddenStates import load_model, get_last_layer_hidden_states
 import jsonlines
 import os
 
-def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
+def main(model1_path, model_idx, padding_len, device1, batch_size=20):
 
     # 加载模型和tokenizer
     model1, tokenizer1 = load_model(model1_path, device1)
@@ -14,9 +14,9 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
 
     prompts = [] 
 
-    data_file_path = f"/newdisk/public/wws/humaneval-x-main/data/{language.lower()}/data/humaneval.jsonl"
+    data_file_path = f"/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"
 
-    pt_dir = f"/newdisk/public/wws/simMeasures/pt_file/test/{lang}/"
+    pt_dir = f"/newdisk/public/wws/simMeasures/pt_file/mbpp/"
     save_dir = pt_dir + model_idx + "/"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -25,60 +25,39 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
             task_id = obj.get('task_id')
-            task_number = int(task_id.split('/')[-1])
-            prompt = obj.get('prompt')
+            prompt = obj.get('text')
             print(f"Task ID: {task_id}")
             prompts.append(prompt)
             
-            if len(prompts) == batch_size or task_number == 163:  # 分批加载
+            if len(prompts) == batch_size or task_id == 974:  # 分批加载
 
                 # 获取所有 prompts 的输入张量，并进行填充
                 inputs_model1 = tokenizer1(prompts, 
-                                           return_tensors='pt', 
+                                           return_tensors='pt',
                                            padding='max_length', 
                                            max_length=padding_len, 
-                                           truncation=True
+                                           truncation=True 
                                            ).to(device1)
 
                 # 获取隐藏层输出
-                outputs, hidden_states_model1 = tokens_get_hidden_states(model1, inputs_model1, device1)
+                outputs, last_layer_hidden_states = get_last_layer_hidden_states(model1, inputs_model1)
 
-                # 获取logits
-                logits = outputs.logits  # shape = (batch_size, seq_len, vocab_size)
-                
-                # 获取每个位置上最可能的token的id
-                predicted_token_ids = torch.argmax(logits, dim=-1)  # shape = (batch_size, seq_len)
-                
-                # 使用tokenizer将token id转换为文本
-                predicted_texts = [tokenizer1.decode(ids, skip_special_tokens=True) for ids in predicted_token_ids]
-
-                # 打印转换后的文本
-                for text in predicted_texts:
-                    print(text)
-                
                 # 保存 hidden_states 到文件
-                # torch.save(hidden_states_model1, f"{save_dir}{model_idx}_batch_{task_number}.pt")
+                # torch.save(last_layer_hidden_states, f"{save_dir}{model_idx}_batch_{task_number}.pt")
 
                 # 清空prompts，准备下一个batch
                 prompts = []
-                break
+                # break
 
 
 
 if __name__ == "__main__":
     """
     how to use:
-        修改以下四个参数↓↓↓
+        修改以下参数↓↓↓
     """
 
-    padding_max_length = {  # python 90%: 262, cpp 90%: 275, java 90%: 292, javascript 90%: 259, go 90%: 168
-    "Python": 262,
-    "CPP": 275,
-    "Java": 292,
-    "JavaScript": 259,
-    "GO": 168
-}   
-
+    padding_max_length = 25 # mbpp text 90%: 22, 95%: 25
 
     # 指定GPU设备
     device_model = torch.device("cuda:3")
@@ -87,9 +66,6 @@ if __name__ == "__main__":
     model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
     model_idx = "codeLlama-7b-Instruct"
     
-    # 设置的数据集语言
-    lang = "Python"
-    
     # 调用主函数
-    main(model_path, model_idx, lang, padding_max_length[lang], device_model)
+    main(model_path, model_idx, padding_max_length, device_model)
     

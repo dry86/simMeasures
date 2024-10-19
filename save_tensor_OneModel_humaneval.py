@@ -3,7 +3,7 @@ from getHiddenStates import load_model, tokens_get_hidden_states
 import jsonlines
 import os
 
-def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
+def main(model1_path, model_idx, language, padding_len, device1, batch_size=1):
 
     # 加载模型和tokenizer
     model1, tokenizer1 = load_model(model1_path, device1)
@@ -61,6 +61,24 @@ def main(model1_path, model_idx, language, padding_len, device1, batch_size=20):
                 for text in predicted_texts:
                     print(text)
                 
+                # 通过 model.generate() 生成文本
+                generated_outputs = model1.generate(
+                    **inputs_model1,
+                    max_length=512,              # 设置生成文本的最大长度
+                    num_return_sequences=1,                # 设置生成的序列数量
+                    do_sample=True,                        # 使用采样生成文本（非贪婪算法）
+                    top_p=0.9,                             # 设置Top-p采样
+                    temperature=1.0                        # 温度参数，控制生成的多样性
+                )
+
+                # 解码生成的 token 为可读的文本
+                generated_texts = [tokenizer1.decode(output, skip_special_tokens=True) for output in generated_outputs]
+
+                # 打印生成的文本
+                for text in generated_texts:
+                    print(text)
+
+
                 # 保存 hidden_states 到文件
                 # torch.save(hidden_states_model1, f"{save_dir}{model_idx}_batch_{task_number}.pt")
 

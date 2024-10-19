@@ -29,22 +29,13 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer2.padding_side = "right"
 
-    prompts = []
-    padding_max_length = 0
-    with jsonlines.open(data_file_path) as reader:
-        for obj in reader:
-            prompt = obj.get('prompt')
-            prompt_length = tokenizer1(prompt, return_tensors='pt').input_ids.shape[1]
-            padding_max_length = max(padding_max_length, prompt_length)
-
     token1 = []
     token2 = []
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
             task_id = obj.get('task_id')
-            task_number = int(task_id.split('/')[-1])
-            prompt = obj.get('prompt')
+            prompt = obj.get('text')
             print(f"Task ID: {task_id}")
             # print(f"Prompt: \n{prompt}")
             # prompts.append(prompt)
@@ -72,10 +63,10 @@ if __name__ == "__main__":
     device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/deepseek-coder/7b-base-v1.5"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
     
-    data_file = "/newdisk/public/wws/humaneval-x-main/data/java/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)
