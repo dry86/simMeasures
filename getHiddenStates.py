@@ -120,7 +120,7 @@ def get_hidden_states(model, tokenizer, input_text, device):
     return hidden_states
     # return [layer_hidden_state.detach().cpu().numpy() for layer_hidden_state in hidden_states]
 
-def tokens_get_hidden_states(model, inputs, device):
+def tokens_get_hidden_states(model, inputs):
     # 确保模型处于评估模式
     model.eval()
     
@@ -132,7 +132,7 @@ def tokens_get_hidden_states(model, inputs, device):
         # 获取所有层的隐藏状态，outputs.hidden_states 是一个元组，包含每一层的输出
         hidden_states = outputs.hidden_states
 
-        return outputs, hidden_states
+        return hidden_states
 
 
 # 获取logits输出

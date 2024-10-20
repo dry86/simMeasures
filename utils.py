@@ -31,6 +31,11 @@ class ResultSaver:
 
         # 如果文件不存在，创建新文件并写入数据
         if not os.path.exists(file_name):
+            directory = os.path.dirname(file_name)
+            # 检查目录是否存在，如果不存在则创建
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
             # 创建一个新的 DataFrame，并保存到指定工作表中
             df = pd.DataFrame({cal_method: [None] * row})
             df.loc[row - 1, cal_method] = score

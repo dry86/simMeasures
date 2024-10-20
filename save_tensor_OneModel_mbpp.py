@@ -1,9 +1,9 @@
 import torch
-from getHiddenStates import load_model, get_last_layer_hidden_states
+from getHiddenStates import load_model, tokens_get_hidden_states
 import jsonlines
 import os
 
-def main(model1_path, model_idx, padding_len, device1, batch_size=20):
+def main(model1_path, model_idx, padding_len, device1, batch_size=300):
 
     # 加载模型和tokenizer
     model1, tokenizer1 = load_model(model1_path, device1)
@@ -16,8 +16,7 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=20):
 
     data_file_path = f"/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"
 
-    pt_dir = f"/newdisk/public/wws/simMeasures/pt_file/mbpp/"
-    save_dir = pt_dir + model_idx + "/"
+    save_dir = model_path + "/pt_file" + "/mbpp/" 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -40,16 +39,16 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=20):
                                            ).to(device1)
 
                 # 获取隐藏层输出
-                outputs, last_layer_hidden_states = get_last_layer_hidden_states(model1, inputs_model1)
+                hidden_states = tokens_get_hidden_states(model1, inputs_model1)
 
                 # 保存 hidden_states 到文件
-                # torch.save(last_layer_hidden_states, f"{save_dir}{model_idx}_batch_{task_number}.pt")
+                torch.save(hidden_states, f"{save_dir}{model_idx}_batch_{task_id}.pt")
 
-                # 清空prompts，准备下一个batch
+                # 清空prompts 和 GPU memory，准备下一个batch
                 prompts = []
-                # break
-
-
+                
+                del hidden_states
+                torch.cuda.empty_cache() 
 
 if __name__ == "__main__":
     """
@@ -57,14 +56,14 @@ if __name__ == "__main__":
         修改以下参数↓↓↓
     """
 
-    padding_max_length = 25 # mbpp text 90%: 22, 95%: 25
+    padding_max_length = 22 # mbpp text 90%: 22, 95%: 25
 
     # 指定GPU设备
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:1")
 
     # 模型和数据路径
-    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
-    model_idx = "codeLlama-7b-Instruct"
+    model_path = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-7b-base-instruct-v1.5"
+    model_idx = "dsc-7b-base-instruct-v1.5"
     
     # 调用主函数
     main(model_path, model_idx, padding_max_length, device_model)
