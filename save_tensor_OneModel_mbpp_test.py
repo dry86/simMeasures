@@ -133,6 +133,7 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=1):
 
 if __name__ == "__main__":
     """
+    此代码用来测试model() 和 model.generate() 函数 的text_generate任务
     how to use:
         修改以下参数↓↓↓
     """

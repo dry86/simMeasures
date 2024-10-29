@@ -34,11 +34,10 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
-            task_id = obj.get('task_id')
-            prompt = obj.get('text')
+            task_id = obj.get('id')
+            prompt = obj.get('input')
             print(f"Task ID: {task_id}")
-            # print(f"Prompt: \n{prompt}")
-            # prompts.append(prompt)
+
 
             inputs_model1 = tokenizer1(prompt, return_tensors='pt').to(device1)
             token1.append(inputs_model1['input_ids'].cpu().numpy())
@@ -64,9 +63,9 @@ if __name__ == "__main__":
 
     # 模型和数据路径
     model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
     
-    data_file = "/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"
+    data_file = "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/py150/line_completion/test.json"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)
