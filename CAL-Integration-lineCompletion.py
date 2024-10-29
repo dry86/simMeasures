@@ -28,6 +28,14 @@ def cal_Statistic(acts1, acts2, shape, idx, saver):
     score = difference(acts1, acts2, shape)
     saver.print_and_save("UniDiff", score, idx)
 
+def cal_Topology(acts1, acts2, shape, idx, saver):
+
+    print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
+
+    imd = IMDScore()
+    score = imd(acts1, acts2, shape)
+    saver.print_and_save("IMD", score, idx)
+
 def cal_Neighbors(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
@@ -72,21 +80,25 @@ def cal_RSM(acts1, acts2, shape, idx, saver):
     score = eigenspace_overlap(acts1, acts2, shape)
     saver.print_and_save("EOlapScore", score, idx)
 
-    # assert K <= n  AssertionError
-    # gulp = Gulp()
-    # score = gulp(acts1, acts2, shape)
-    # print_and_save("Gulp", score, idx, sheet)
+    # assert K <= n  -> AssertionError
+    gulp = Gulp()
+    score = gulp(acts1, acts2, shape)
+    saver.print_and_save("Gulp", score, idx)
 
 def cal_Alignment(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    score = orthogonal_procrustes(acts1, acts2, shape)
-    saver.print_and_save("OrthPro", score, idx)
+    # score = orthogonal_procrustes(acts1, acts2, shape)
+    # saver.print_and_save("OrthPro", score, idx)
 
     opcan = OrthogonalProcrustesCenteredAndNormalized()
     score = opcan(acts1, acts2, shape)
     saver.print_and_save("OrthProCAN", score, idx)
+
+    asm = OrthogonalAngularShapeMetricCentered()
+    score = asm(acts1, acts2, shape)
+    saver.print_and_save("OrthAngShape", score, idx)
 
     linear_regression = LinearRegression()
     score = linear_regression(acts1, acts2, shape)
@@ -104,12 +116,20 @@ def cal_Alignment(acts1, acts2, shape, idx, saver):
     score = hard_correlation_match(acts1, acts2, shape)
     saver.print_and_save("HardCorMatch", score, idx)
 
+    PermProc = PermutationProcrustes()
+    score = PermProc(acts1, acts2, shape)
+    saver.print_and_save("PermProc", score, idx)
+
+    ProcDict = ProcrustesSizeAndShapeDistance()
+    score = ProcDict(acts1, acts2, shape)
+    saver.print_and_save("ProcDict", score, idx)
+
 def calculate_cca(acts1, acts2, idx, saver):
 
     acts1 = acts1.T # convert to neurons by datapoints
     acts2 = acts2.T
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
-    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-8, verbose=False)
+    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
     saver.print_and_save("MeanCCA", np.mean(results["cca_coef1"]), row=idx)
 
     svcca_res = cca_core.compute_svcca(acts1, acts2)
@@ -135,11 +155,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         layer_hidden_states_1 = hidden_states_model1[i]
         layer_hidden_states_2 = hidden_states_model2[i]
 
-        acts1 = layer_hidden_states_1
-        acts2 = layer_hidden_states_2
-
-        acts1_numpy = acts1.cpu().numpy()
-        acts2_numpy = acts2.cpu().numpy()
+        acts1_numpy = layer_hidden_states_1.cpu().numpy()
+        acts2_numpy = layer_hidden_states_2.cpu().numpy()
         shape = "nd"
 
         # CCA
@@ -150,6 +167,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
         # Neighbors
         cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
+        # Topology
+        cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
         # Statistic
         cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
 
@@ -182,9 +201,9 @@ if __name__ == "__main__":
         # 调用主函数
         model_1 = prefix_model_path + model_idx1
         model_2 = prefix_model_path + model_idx2
-        print(f"Current work: {model_pair}, lang: {lang}")
+        print(f"Current work: {model_pair}, lang: {lang}, CCA epsilon=1e-6")
         main(model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
-        print(f"Finish work: {model_pair}")
+        print(f"Finish work: {model_pair}, lang: {lang}, CCA epsilon=1e-6")
         print("-"*50)
         print("-"*50)
         print("-"*50)

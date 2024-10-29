@@ -25,7 +25,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     batch_counter = 0
 
     batch_idx = 1
-
+    print(f"\tbatch process start!")
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
@@ -92,11 +92,16 @@ if __name__ == "__main__":
 
 
     # 指定GPU设备
-    device_model = torch.device("cuda:2")
+    device_model = torch.device("cuda:3")
 
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-lineCompletion.json5'))
+
+    for config in configs:
+        model_idx = config.get('model_idx')
+        print(f"task list: {model_idx}")
+    print("-"*50)
 
     for config in configs:
         model_path = config.get('model_path')

@@ -58,14 +58,14 @@ if __name__ == "__main__":
         修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
-    device_model1 = torch.device("cuda:2")
+    device_model1 = torch.device("cuda:0")
     device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
+    model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B"
+    model_2 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
     
-    data_file = "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/py150/line_completion/test.json"
+    data_file = "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/javaCorpus/line_completion/test.json"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)
