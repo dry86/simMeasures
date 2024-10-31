@@ -81,9 +81,9 @@ def cal_RSM(acts1, acts2, shape, idx, saver):
     saver.print_and_save("EOlapScore", score, idx)
 
     # assert K <= n  -> AssertionError
-    gulp = Gulp()
-    score = gulp(acts1, acts2, shape)
-    saver.print_and_save("Gulp", score, idx)
+    # gulp = Gulp()
+    # score = gulp(acts1, acts2, shape)
+    # saver.print_and_save("Gulp", score, idx)
 
 def cal_Alignment(acts1, acts2, shape, idx, saver):
 
@@ -152,6 +152,9 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
+        # if i < 19:
+        #     continue
+
         layer_hidden_states_1 = hidden_states_model1[i]
         layer_hidden_states_2 = hidden_states_model2[i]
 
@@ -186,6 +189,13 @@ if __name__ == "__main__":
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-lineCompletion.json5'))
+
+    for config in configs:
+        prefix_model_path = config.get('prefix_model_path')
+        model_idx1 = config.get('model_idx1')
+        model_idx2 = config.get('model_idx2')
+        print(prefix_model_path, model_idx1, model_idx2)
+        print("-"*50)
 
     for config in configs:
         prefix_model_path = config.get('prefix_model_path')
