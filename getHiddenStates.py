@@ -5,7 +5,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # 加载模型
 def load_model(model_name, device):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, output_hidden_states=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name, return_dict_in_generate=True, output_hidden_states=True)
     model = model.to(device)  # 将模型移动到指定的GPU上
     return model, tokenizer
 
@@ -127,7 +127,7 @@ def tokens_get_hidden_states(model, inputs):
     # 禁用梯度计算，节省内存和加速计算
     with torch.no_grad():
         # 前向传播，获取模型输出
-        outputs = model(**inputs, output_hidden_states=True)
+        outputs = model(**inputs, return_dict_in_generate=True, output_hidden_states=True)
         
         # 获取所有层的隐藏状态，outputs.hidden_states 是一个元组，包含每一层的输出
         hidden_states = outputs.hidden_states
