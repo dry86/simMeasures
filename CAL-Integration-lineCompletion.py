@@ -195,7 +195,7 @@ if __name__ == "__main__":
         model_idx1 = config.get('model_idx1')
         model_idx2 = config.get('model_idx2')
         print(prefix_model_path, model_idx1, model_idx2)
-        print("-"*50)
+    print("-"*50)
 
     for config in configs:
         prefix_model_path = config.get('prefix_model_path')

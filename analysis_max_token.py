@@ -34,8 +34,11 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
-            task_id = obj.get('id')
-            prompt = obj.get('input')
+            # task_id = obj.get('id')
+            # prompt = obj.get('input')
+            # print(f"Task ID: {task_id}")
+            task_id = obj.get('repo')
+            prompt = "please describe the functionality of the method: " + obj.get('code')
             print(f"Task ID: {task_id}")
 
 
@@ -58,14 +61,14 @@ if __name__ == "__main__":
         修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
-    device_model1 = torch.device("cuda:2")
-    device_model2 = torch.device("cuda:3")
+    device_model1 = torch.device("cuda:0")
+    device_model2 = torch.device("cuda:1")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B"
-    model_2 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_2 = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-6.7b-base"
     
-    data_file = "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/javaCorpus/line_completion/test.json"
+    data_file = "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/python/test.jsonl"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)
