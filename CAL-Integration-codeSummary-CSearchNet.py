@@ -124,7 +124,7 @@ def cal_Alignment(acts1, acts2, shape, idx, saver):
     score = ProcDict(acts1, acts2, shape)
     saver.print_and_save("ProcDict", score, idx)
 
-def calculate_cca(acts1, acts2, idx, saver):
+def calculate_cca(acts1, acts2, shape, idx, saver):
 
     acts1 = acts1.T # convert to neurons by datapoints
     acts2 = acts2.T
@@ -132,7 +132,9 @@ def calculate_cca(acts1, acts2, idx, saver):
     results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
     saver.print_and_save("MeanCCA", np.mean(results["cca_coef1"]), row=idx)
 
-    svcca_res = cca_core.compute_svcca(acts1, acts2)
+    svcca = SVCCA()
+    # svcca_res = cca_core.compute_svcca(acts1, acts2)
+    svcca_res = svcca(acts1.T, acts2.T, shape)  # SVCCA transpose acts
     saver.print_and_save("SVCCA", svcca_res, row=idx)
 
     pwcca_mean, w, _ = cca_core.compute_pwcca(results, acts1, acts2)
@@ -143,8 +145,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/line_completion/{lang}/"
-    pt_model_2 = model2_path + f"/pt_file/line_completion/{lang}/"
+    pt_model_1 = model1_path + f"/pt_file/codeSummary_CSearchNet/{lang}/"   # M
+    pt_model_2 = model2_path + f"/pt_file/codeSummary_CSearchNet/{lang}/"
     hidden_states_model1 = concatenate_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = concatenate_hidden_states(pt_model_2, model_idx2, device2)
 
@@ -163,7 +165,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         shape = "nd"
 
         # CCA
-        # calculate_cca(acts1_numpy, acts2_numpy, i, saver)
+        calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
         # Alignment
         cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
         # RSM
@@ -188,13 +190,14 @@ if __name__ == "__main__":
     # device_model2 = 'cpu'
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-lineCompletion.json5'))
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-codeSummary-CSearchNet.json5'))
 
     for config in configs:
         prefix_model_path = config.get('prefix_model_path')
         model_idx1 = config.get('model_idx1')
         model_idx2 = config.get('model_idx2')
-        print(prefix_model_path, model_idx1, model_idx2)
+        lang = config.get('lang')
+        print(prefix_model_path, model_idx1, model_idx2, lang)
     print("-"*50)
 
     for config in configs:
@@ -204,7 +207,7 @@ if __name__ == "__main__":
         lang = config.get('lang')
 
         model_pair = model_idx1 + "-" + model_idx2
-        saver_name = model_pair + "-lineCompletion"
+        saver_name = model_pair + "-codeSummary-CSearchNet" # M
         sheet_name = model_idx1 + "-" + model_idx2.split("-")[-1] + "-" + lang
         saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 

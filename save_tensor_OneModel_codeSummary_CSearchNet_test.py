@@ -29,47 +29,47 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=1):
             # prompt = obj.get('text')
             # print(f"Task ID: {task_id}")
             task_id = obj.get('repo')
-            prompt = "please describe the functionality of the method: " + obj.get('code')
+            prompt = "Please generate a concise code summarization about the method：" + obj.get('code')
             print(f"Task ID: {task_id}")
             print(prompt)
             print("-"*50)
             prompts.append(prompt)
             
-            if len(prompts) == batch_size or task_id == 974:  # 分批加载
+            if len(prompts) == batch_size:  # 分批加载
 
                 # 获取所有 prompts 的输入张量，并进行填充
                 inputs_model1 = tokenizer1(prompts, 
-                                           return_tensors='pt', 
+                                           return_tensors='pt'
                                            ).to(device1)
 
-                # 获取隐藏层输出
-                outputs, last_layer_hidden_states = get_last_layer_hidden_states(model1, inputs_model1)
+                # # 获取隐藏层输出
+                # outputs, last_layer_hidden_states = get_last_layer_hidden_states(model1, inputs_model1)
 
-                # 获取logits
-                logits = outputs.logits  # shape = (batch_size, seq_len, vocab_size)
+                # # 获取logits
+                # logits = outputs.logits  # shape = (batch_size, seq_len, vocab_size)
                 
-                # 获取每个位置上最可能的token的id
-                predicted_token_ids = torch.argmax(logits, dim=-1)  # shape = (batch_size, seq_len)
+                # # 获取每个位置上最可能的token的id
+                # predicted_token_ids = torch.argmax(logits, dim=-1)  # shape = (batch_size, seq_len)
                 
-                # 使用tokenizer将token id转换为文本
-                predicted_texts = [tokenizer1.decode(ids, skip_special_tokens=True) for ids in predicted_token_ids]
+                # # 使用tokenizer将token id转换为文本
+                # predicted_texts = [tokenizer1.decode(ids, skip_special_tokens=True) for ids in predicted_token_ids]
 
-                print("convert texts:")
-                # 打印转换后的文本
-                for text in predicted_texts:
-                    print(text)
-                print("-"*50)
-                print("-"*50)
-                print("-"*50)
+                # print("convert texts:")
+                # # 打印转换后的文本
+                # for text in predicted_texts:
+                #     print(text)
+                # print("-"*50)
+                # print("-"*50)
+                # print("-"*50)
 
-                generated_outputs = model1.generate(
-                    **inputs_model1,
-                    max_length=512,              # 设置生成文本的最大长度
-                    num_return_sequences=1,                # 设置生成的序列数量
-                    do_sample=True,                        # 使用采样生成文本（非贪婪算法）
-                    top_p=0.9,                             # 设置Top-p采样
-                    temperature=1.0                        # 温度参数，控制生成的多样性
-                )
+                # generated_outputs = model1.generate(
+                #     **inputs_model1,
+                #     max_length=512,              # 设置生成文本的最大长度
+                #     num_return_sequences=1,                # 设置生成的序列数量
+                #     do_sample=True,                        # 使用采样生成文本（非贪婪算法）
+                #     top_p=0.9,                             # 设置Top-p采样
+                #     temperature=1.0                        # 温度参数，控制生成的多样性
+                # )
 
                 # 解码生成的 token 为可读的文本
                 # generated_texts = [tokenizer1.decode(output, skip_special_tokens=True) for output in generated_outputs]
@@ -144,7 +144,7 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=1):
 
                 # 清空prompts，准备下一个batch
                 prompts = []
-                break
+                # break
 
 
 
@@ -158,10 +158,10 @@ if __name__ == "__main__":
     padding_max_length = 441 # codeSum-QWen text 90%: 441
 
     # 指定GPU设备
-    device_model = torch.device("cuda:0")
+    device_model = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_path = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-6.7b-base"
+    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
     model_idx = "Qwen2.5-Coder-7B-Instruct"
     
     # 调用主函数

@@ -78,6 +78,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
         concatenated_hidden_states = torch.stack([torch.stack(states) for states in accumulated_hidden_states])
         concatenated_hidden_states = concatenated_hidden_states.permute(1, 0, 2)  # 变换为 (33, 1000, 4096)
         torch.save(concatenated_hidden_states, f"{save_dir}{model_idx}_batch_{batch_idx}.pt")
+        print(f"\tbatch_{batch_idx} saved!")
 
 
 
@@ -100,7 +101,8 @@ if __name__ == "__main__":
 
     for config in configs:
         model_idx = config.get('model_idx')
-        print(f"task list: {model_idx}")
+        lang = config.get('lang')
+        print(f"task list: {model_idx}, {lang}")
     print("-"*50)
 
     for config in configs:
