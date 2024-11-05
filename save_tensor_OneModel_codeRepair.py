@@ -14,7 +14,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     tokenizer1.pad_token = tokenizer1.eos_token
     tokenizer1.padding_side = "right"   # 使用EOS时,向右填充
 
-    data_file_path = f"/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl"
+    data_file_path = f"/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"
 
     save_dir = model_path + "/pt_file" + "/codeSummary_CSearchNet/" +  lang + "/"
     if not os.path.exists(save_dir):
@@ -24,7 +24,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     accumulated_hidden_states = []
     batch_counter = 0
 
-    prompt_ = "Please describe the functionality of the method: "
+    prompt_ = "Please fix the bug in the following code: "
     print(f"prompt: {prompt_}")
     batch_idx = 1
     print(f"\tbatch process start!")
@@ -73,17 +73,12 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
             del hidden_states, last_token_hidden_states
             torch.cuda.empty_cache()
             
-
-
     # 如果循环结束后仍有未保存的hidden states
     if accumulated_hidden_states:
         concatenated_hidden_states = torch.stack([torch.stack(states) for states in accumulated_hidden_states])
         concatenated_hidden_states = concatenated_hidden_states.permute(1, 0, 2)  # 变换为 (33, 1000, 4096)
         torch.save(concatenated_hidden_states, f"{save_dir}{model_idx}_batch_{batch_idx}.pt")
         print(f"\tbatch_{batch_idx} saved!")
-
-
-
 
 if __name__ == "__main__":
     """
@@ -93,10 +88,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()  
 
-
     # 指定GPU设备
     device_model = torch.device("cuda:3")
-
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-codeSummary_CSearchNet.json5'))

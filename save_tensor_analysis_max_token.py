@@ -29,6 +29,8 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer2.padding_side = "right"
 
+    prompt_ = "Please fix the bug in the following code: "
+    print(f"prompt: {prompt_}")
     token1 = []
     token2 = []
     # 读取数据文件
@@ -38,7 +40,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
             # prompt = obj.get('input')
             # print(f"Task ID: {task_id}")
             task_id = obj.get('repo')
-            prompt = "please describe the functionality of the method: " + obj.get('code')
+            prompt = prompt_ + obj.get('code')
             print(f"Task ID: {task_id}")
 
 
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B"
     model_2 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
     
-    data_file = "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/java/test.jsonl"
+    data_file = "/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)

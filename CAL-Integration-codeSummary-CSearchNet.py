@@ -154,7 +154,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 19:
+        # if i < 2:
         #     continue
 
         layer_hidden_states_1 = hidden_states_model1[i]
@@ -214,9 +214,9 @@ if __name__ == "__main__":
         # 调用主函数
         model_1 = prefix_model_path + model_idx1
         model_2 = prefix_model_path + model_idx2
-        print(f"Current work: {model_pair}, lang: {lang}, CCA epsilon=1e-6")
+        print(f"Current work: {model_pair}, lang: {lang}, CCA series epsilon=1e-6")
         main(model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
-        print(f"Finish work: {model_pair}, lang: {lang}, CCA epsilon=1e-6")
+        print(f"Finish work: {model_pair}, lang: {lang}, CCA series epsilon=1e-6")
         print("-"*50)
         print("-"*50)
         print("-"*50)

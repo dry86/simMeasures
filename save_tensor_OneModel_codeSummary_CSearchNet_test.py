@@ -29,7 +29,7 @@ def main(model1_path, model_idx, padding_len, device1, batch_size=1):
             # prompt = obj.get('text')
             # print(f"Task ID: {task_id}")
             task_id = obj.get('repo')
-            prompt = "Please generate a concise code summarization about the method：" + obj.get('code')
+            prompt = "Please describe the functionality of the method: " + obj.get('code')
             print(f"Task ID: {task_id}")
             print(prompt)
             print("-"*50)
@@ -158,10 +158,10 @@ if __name__ == "__main__":
     padding_max_length = 441 # codeSum-QWen text 90%: 441
 
     # 指定GPU设备
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:0")
 
     # 模型和数据路径
-    model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_path = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-6.7b-instruct"
     model_idx = "Qwen2.5-Coder-7B-Instruct"
     
     # 调用主函数
