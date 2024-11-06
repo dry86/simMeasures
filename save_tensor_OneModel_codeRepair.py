@@ -16,7 +16,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
 
     data_file_path = f"/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"
 
-    save_dir = model_path + "/pt_file" + "/codeSummary_CSearchNet/" +  lang + "/"
+    save_dir = model_path + "/pt_file" + "/codeRepair/" +  lang + "/"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -25,53 +25,58 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     batch_counter = 0
 
     prompt_ = "Please fix the bug in the following code: "
-    print(f"prompt: {prompt_}")
+    print(f"prompt_: {prompt_}")
     batch_idx = 1
     print(f"\tbatch process start!")
     # 读取数据文件
-    with jsonlines.open(data_file_path) as reader:
-        for obj in reader:
-            task_id = obj.get('repo')
-            prompt = prompt_ + obj.get('code')
-            # print(f"Task ID: {task_id}")
+    # 打开文件并读取每一行内容
+    with open(data_file_path, "r") as file:
+        lines = file.readlines()
+    # 去除每行末尾的换行符
+    lines = [line.strip() for line in lines]
 
-            inputs = tokenizer1(prompt, 
-                                return_tensors='pt',
-                                padding='max_length', 
-                                max_length=padding_len, 
-                                truncation=True
-                                ).to(device1)
+    # 读取数据文件
+    for i, line in enumerate(lines, start = 1):
+        prompt = prompt_ + line
+        # print(f"Task {i}: {prompt}")
 
-            # 获取隐藏层输出
-            hidden_states = tokens_get_hidden_states(model, inputs)
+        inputs = tokenizer1(prompt, 
+                            return_tensors='pt',
+                            padding='max_length', 
+                            max_length=padding_len, 
+                            truncation=True
+                            ).to(device1)
 
-            # 获取每一层最后一个有效(非padding)token
-            last_non_padding_index = inputs['attention_mask'].sum(dim=1) - 1
-            last_token_hidden_states = [layer_output[torch.arange(batch_size), last_non_padding_index, :].squeeze(0).cpu() for layer_output in hidden_states]
+        # 获取隐藏层输出
+        hidden_states = tokens_get_hidden_states(model, inputs)
 
-            # 将每层的 last_token_hidden_states 添加到累积列表
-            accumulated_hidden_states.append(last_token_hidden_states)
-            batch_counter += batch_size
+        # 获取每一层最后一个有效(非padding)token
+        last_non_padding_index = inputs['attention_mask'].sum(dim=1) - 1
+        last_token_hidden_states = [layer_output[torch.arange(batch_size), last_non_padding_index, :].squeeze(0).cpu() for layer_output in hidden_states]
 
-            # 当累积数量达到1000时，保存hidden states并清空累积
-            if batch_counter >= 1000:
-                # 将累积的 hidden states 转换为张量 (1000, num_layers, hidden_size)
-                concatenated_hidden_states = torch.stack([torch.stack(states) for states in accumulated_hidden_states])
+        # 将每层的 last_token_hidden_states 添加到累积列表
+        accumulated_hidden_states.append(last_token_hidden_states)
+        batch_counter += batch_size
 
-                # 进行形状变换，使得保留33层, 每层形状为(1000, 4096)
-                concatenated_hidden_states = concatenated_hidden_states.permute(1, 0, 2)  # 变换为 (num_layers, 1000, 4096)
+        # 当累积数量达到1000时，保存hidden states并清空累积
+        if batch_counter >= 1000:
+            # 将累积的 hidden states 转换为张量 (1000, num_layers, hidden_size)
+            concatenated_hidden_states = torch.stack([torch.stack(states) for states in accumulated_hidden_states])
 
-                # 保存拼接的 hidden states 到文件
-                torch.save(concatenated_hidden_states, f"{save_dir}{model_idx}_batch_{batch_idx}.pt")
-                print(f"\tbatch_{batch_idx} saved!")
-                batch_idx = batch_idx + 1
+            # 进行形状变换，使得保留33层, 每层形状为(1000, 4096)
+            concatenated_hidden_states = concatenated_hidden_states.permute(1, 0, 2)  # 变换为 (num_layers, 1000, 4096)
 
-                # 清空累积列表和计数器
-                accumulated_hidden_states.clear()
-                batch_counter = 0
-            
-            del hidden_states, last_token_hidden_states
-            torch.cuda.empty_cache()
+            # 保存拼接的 hidden states 到文件
+            torch.save(concatenated_hidden_states, f"{save_dir}{model_idx}_batch_{batch_idx}.pt")
+            print(f"\tbatch_{batch_idx} saved!")
+            batch_idx = batch_idx + 1
+
+            # 清空累积列表和计数器
+            accumulated_hidden_states.clear()
+            batch_counter = 0
+        
+        del hidden_states, last_token_hidden_states
+        torch.cuda.empty_cache()
             
     # 如果循环结束后仍有未保存的hidden states
     if accumulated_hidden_states:
@@ -89,10 +94,10 @@ if __name__ == "__main__":
     start_time = time.time()  
 
     # 指定GPU设备
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:2")
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-codeSummary_CSearchNet.json5'))
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-codeRepair.json5'))
 
     for config in configs:
         model_idx = config.get('model_idx')

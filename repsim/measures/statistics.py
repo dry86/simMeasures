@@ -66,6 +66,20 @@ def uniformity_difference(
 
     return float(abs(uniformity(R) - uniformity(Rp)))
 
+def torch_uniformity_difference(
+    R: Union[torch.Tensor, npt.NDArray],
+    Rp: Union[torch.Tensor, npt.NDArray],
+    shape: tuple,
+    n_jobs: Optional[int] = None,
+) -> float:
+    R, Rp = torch.tensor(R).view(*shape), torch.tensor(Rp).view(*shape)
+
+    def uniformity(x, t=2):
+        pdist = torch.cdist(x, x, p=2) ** 2  # 计算平方欧氏距离
+        return torch.log(torch.exp(-t * pdist).sum() / (x.shape[0] ** 2))
+
+    return float(abs(uniformity(R) - uniformity(Rp)))
+
 
 def concentricity(x):
     return 1 - sklearn.metrics.pairwise_distances(x, x.mean(axis=0, keepdims=True), metric="cosine")

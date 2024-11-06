@@ -7,138 +7,225 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 from example import cca_core
 from utils import ResultSaver
+from functools import wraps
 from getHiddenStates import concatenate_hidden_states, concatenate_last_layer_hidden_states
 from repsim.measures.procrustes import orthogonal_procrustes
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
+PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
+
+def time_it(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if PRINT_TIMING:
+            start_time = time.time()
+        result = func(*args, **kwargs)
+        if PRINT_TIMING:
+            end_time = time.time()
+            print(f"\tTime taken for {func.__name__}: {(end_time - start_time) / 60:.4f} mins")
+        return result
+    return wrapper
+
 def cal_Statistic(acts1, acts2, shape, idx, saver):
+
+    @time_it
+    def calculate_magnitude_difference(acts1, acts2, shape):
+        difference = MagnitudeDifference()
+        return difference(acts1, acts2, shape)
+
+    @time_it
+    def calculate_concentricity_difference(acts1, acts2, shape):
+        difference = ConcentricityDifference()
+        return difference(acts1, acts2, shape)
+
+    @time_it
+    def calculate_uniformity_difference(acts1, acts2, shape):
+        difference = UniformityDifference()
+        return difference(acts1, acts2, shape)
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    difference = MagnitudeDifference()
-    score = difference(acts1, acts2, shape)
+    score = calculate_magnitude_difference(acts1, acts2, shape)
     saver.print_and_save("MagDiff", score, idx)
 
-    difference = ConcentricityDifference()
-    score = difference(acts1, acts2, shape)
+    score = calculate_concentricity_difference(acts1, acts2, shape)
     saver.print_and_save("ConDiff", score, idx)
 
-    difference = UniformityDifference()
-    score = difference(acts1, acts2, shape)
+    score = calculate_uniformity_difference(acts1, acts2, shape)
     saver.print_and_save("UniDiff", score, idx)
+
 
 def cal_Topology(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    imd = IMDScore()
-    score = imd(acts1, acts2, shape)
+    @time_it
+    def calculate_imd_score(acts1, acts2, shape):
+        imd = IMDScore()
+        return imd(acts1, acts2, shape)
+
+    print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
+
+    score = calculate_imd_score(acts1, acts2, shape)
     saver.print_and_save("IMD", score, idx)
 
 def cal_Neighbors(acts1, acts2, shape, idx, saver):
 
+    @time_it
+    def calculate_jaccard_similarity(acts1, acts2, shape):
+        jaccard = JaccardSimilarity()
+        return jaccard(acts1, acts2, shape)
+
+    @time_it
+    def calculate_second_order_cosine_similarity(acts1, acts2, shape):
+        secondOrder_cosine = SecondOrderCosineSimilarity()
+        return secondOrder_cosine(acts1, acts2, shape)
+
+    @time_it
+    def calculate_rank_similarity(acts1, acts2, shape):
+        rankSim = RankSimilarity()
+        return rankSim(acts1, acts2, shape)
+
+    @time_it
+    def calculate_joint_rank_jaccard_similarity(acts1, acts2, shape):
+        return joint_rank_jaccard_similarity(acts1, acts2, shape)
+
+    # 主体逻辑
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    jaccard = JaccardSimilarity()
-    score = jaccard(acts1, acts2, shape)
+    score = calculate_jaccard_similarity(acts1, acts2, shape)
     saver.print_and_save("JacSim", score, idx)
 
-    secondOrder_cosine = SecondOrderCosineSimilarity()
-    score = secondOrder_cosine(acts1, acts2, shape)
+    score = calculate_second_order_cosine_similarity(acts1, acts2, shape)
     saver.print_and_save("SecOrdCosSim", score, idx)
 
-    rankSim = RankSimilarity()
-    score = rankSim(acts1, acts2, shape)
+    score = calculate_rank_similarity(acts1, acts2, shape)
     saver.print_and_save("RankSim", score, idx)
 
-    score = joint_rank_jaccard_similarity(acts1, acts2, shape)
+    score = calculate_joint_rank_jaccard_similarity(acts1, acts2, shape)
     saver.print_and_save("RankJacSim", score, idx)
 
 def cal_RSM(acts1, acts2, shape, idx, saver):
+    @time_it
+    def calculate_rsm_norm_difference(acts1, acts2, shape):
+        rsm_norm_diff = RSMNormDifference()
+        return rsm_norm_diff(acts1, acts2, shape)
+
+    @time_it
+    def calculate_rsa(acts1, acts2, shape):
+        rsa = RSA()
+        return rsa(acts1, acts2, shape)
+
+    @time_it
+    def calculate_cka(acts1, acts2, shape):
+        cka = CKA()
+        return cka(acts1, acts2, shape)
+
+    @time_it
+    def calculate_distance_correlation(acts1, acts2, shape):
+        dCor = DistanceCorrelation()
+        return dCor(acts1, acts2, shape)
+
+    @time_it
+    def calculate_eigenspace_overlap(acts1, acts2, shape):
+        eigenspace_overlap = EigenspaceOverlapScore()
+        return eigenspace_overlap(acts1, acts2, shape)
+
+    @time_it
+    def calculate_gulp(acts1, acts2, shape):
+        gulp = Gulp()
+        return gulp(acts1, acts2, shape)
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    # 计算耗时太长 !
-    rsm_norm_diff = RSMNormDifference()
-    score = rsm_norm_diff(acts1, acts2, shape)
-    saver.print_and_save("RSMNormDiff", score, idx)
-
-    rsa = RSA()
-    score = rsa(acts1, acts2, shape)
-    saver.print_and_save("RSA", score, idx)
-
-    cka = CKA()
-    score = cka(acts1, acts2, shape)
-    saver.print_and_save("CKA", score, idx)
-
-    dCor = DistanceCorrelation()
-    score = dCor(acts1, acts2, shape)
-    saver.print_and_save("DisCor", score, idx)
-
-    eigenspace_overlap = EigenspaceOverlapScore()
-    score = eigenspace_overlap(acts1, acts2, shape)
-    saver.print_and_save("EOlapScore", score, idx)
-
+    saver.print_and_save("RSMNormDiff", calculate_rsm_norm_difference(acts1, acts2, shape), idx)
+    saver.print_and_save("RSA", calculate_rsa(acts1, acts2, shape), idx)
+    saver.print_and_save("CKA", calculate_cka(acts1, acts2, shape), idx)
+    saver.print_and_save("DisCor", calculate_distance_correlation(acts1, acts2, shape), idx)
+    saver.print_and_save("EOlapScore", calculate_eigenspace_overlap(acts1, acts2, shape), idx)
     # assert K <= n  -> AssertionError
-    # gulp = Gulp()
-    # score = gulp(acts1, acts2, shape)
-    # saver.print_and_save("Gulp", score, idx)
+    # saver.print_and_save("Gulp", calculate_gulp(acts1, acts2, shape), idx)
 
 def cal_Alignment(acts1, acts2, shape, idx, saver):
 
+    @time_it
+    def calculate_opcan(acts1, acts2, shape):
+        opcan = OrthogonalProcrustesCenteredAndNormalized()
+        return opcan(acts1, acts2, shape)
+
+    @time_it
+    def calculate_asm(acts1, acts2, shape):
+        asm = OrthogonalAngularShapeMetricCentered()
+        return asm(acts1, acts2, shape)
+
+    @time_it
+    def calculate_linear_regression(acts1, acts2, shape):
+        linear_regression = LinearRegression()
+        return linear_regression(acts1, acts2, shape)
+
+    @time_it
+    def calculate_aligned_cosine_sim(acts1, acts2, shape):
+        aligned_cosine_sim = AlignedCosineSimilarity()
+        return aligned_cosine_sim(acts1, acts2, shape)
+
+    @time_it
+    def calculate_soft_correlation_match(acts1, acts2, shape):
+        soft_correlation_match = SoftCorrelationMatch()
+        return soft_correlation_match(acts1, acts2, shape)
+
+    @time_it
+    def calculate_hard_correlation_match(acts1, acts2, shape):
+        hard_correlation_match = HardCorrelationMatch()
+        return hard_correlation_match(acts1, acts2, shape)
+
+    @time_it
+    def calculate_permutation_procrustes(acts1, acts2, shape):
+        PermProc = PermutationProcrustes()
+        return PermProc(acts1, acts2, shape)
+
+    @time_it
+    def calculate_procrustes_size_and_shape_distance(acts1, acts2, shape):
+        ProcDict = ProcrustesSizeAndShapeDistance()
+        return ProcDict(acts1, acts2, shape)
+
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    # score = orthogonal_procrustes(acts1, acts2, shape)
-    # saver.print_and_save("OrthPro", score, idx)
-
-    opcan = OrthogonalProcrustesCenteredAndNormalized()
-    score = opcan(acts1, acts2, shape)
-    saver.print_and_save("OrthProCAN", score, idx)
-
-    asm = OrthogonalAngularShapeMetricCentered()
-    score = asm(acts1, acts2, shape)
-    saver.print_and_save("OrthAngShape", score, idx)
-
-    linear_regression = LinearRegression()
-    score = linear_regression(acts1, acts2, shape)
-    saver.print_and_save("LinRegre", score, idx)
-
-    aligned_cosine_sim = AlignedCosineSimilarity()
-    score = aligned_cosine_sim(acts1, acts2, shape)
-    saver.print_and_save("AliCosSim", score, idx)
-
-    soft_correlation_match = SoftCorrelationMatch()
-    score = soft_correlation_match(acts1, acts2, shape)
-    saver.print_and_save("SoftCorMatch", score, idx)
-
-    hard_correlation_match = HardCorrelationMatch()
-    score = hard_correlation_match(acts1, acts2, shape)
-    saver.print_and_save("HardCorMatch", score, idx)
-
-    PermProc = PermutationProcrustes()
-    score = PermProc(acts1, acts2, shape)
-    saver.print_and_save("PermProc", score, idx)
-
-    ProcDict = ProcrustesSizeAndShapeDistance()
-    score = ProcDict(acts1, acts2, shape)
-    saver.print_and_save("ProcDict", score, idx)
+    saver.print_and_save("OrthProCAN", calculate_opcan(acts1, acts2, shape), idx)
+    saver.print_and_save("OrthAngShape", calculate_asm(acts1, acts2, shape), idx)
+    saver.print_and_save("LinRegre", calculate_linear_regression(acts1, acts2, shape), idx)
+    saver.print_and_save("AliCosSim", calculate_aligned_cosine_sim(acts1, acts2, shape), idx)
+    saver.print_and_save("SoftCorMatch", calculate_soft_correlation_match(acts1, acts2, shape), idx)
+    saver.print_and_save("HardCorMatch", calculate_hard_correlation_match(acts1, acts2, shape), idx)
+    saver.print_and_save("PermProc", calculate_permutation_procrustes(acts1, acts2, shape), idx)
+    saver.print_and_save("ProcDict", calculate_procrustes_size_and_shape_distance(acts1, acts2, shape), idx)
 
 def calculate_cca(acts1, acts2, shape, idx, saver):
+    @time_it
+    def calculate_cca(acts1, acts2):
+        results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
+        return results
+
+    @time_it
+    def calculate_svcca(acts1, acts2, shape):
+        svcca = SVCCA()
+        return svcca(acts1.T, acts2.T, shape)
+
+    @time_it
+    def calculate_pwcca(results, acts1, acts2):
+        pwcca_mean, _, _ = cca_core.compute_pwcca(results, acts1, acts2)
+        return pwcca_mean
 
     acts1 = acts1.T # convert to neurons by datapoints
     acts2 = acts2.T
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
-    results = cca_core.get_cca_similarity(acts1, acts2, epsilon=1e-6, verbose=False)
+
+    results = calculate_cca(acts1, acts2)
     saver.print_and_save("MeanCCA", np.mean(results["cca_coef1"]), row=idx)
-
-    svcca = SVCCA()
     # svcca_res = cca_core.compute_svcca(acts1, acts2)
-    svcca_res = svcca(acts1.T, acts2.T, shape)  # SVCCA transpose acts
-    saver.print_and_save("SVCCA", svcca_res, row=idx)
+    saver.print_and_save("SVCCA", calculate_svcca(acts1, acts2, shape), row=idx)    # SVCCA transpose acts
+    saver.print_and_save("PWCCA", calculate_pwcca(results, acts1, acts2), row=idx)
 
-    pwcca_mean, w, _ = cca_core.compute_pwcca(results, acts1, acts2)
-    saver.print_and_save("PWCCA", pwcca_mean, row=idx)
 
 
 def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
@@ -154,8 +241,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 2:
-        #     continue
+        if i < 15:
+            continue
 
         layer_hidden_states_1 = hidden_states_model1[i]
         layer_hidden_states_2 = hidden_states_model2[i]
@@ -183,8 +270,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'

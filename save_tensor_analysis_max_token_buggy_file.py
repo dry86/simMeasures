@@ -42,9 +42,8 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
 
     # 读取数据文件
     for i, line in enumerate(lines, start = 1):
-        print(f"Task {i}: {line}")
-
         prompt = prompt_ + line
+        print(f"Task {i}: {prompt}")
 
         inputs_model1 = tokenizer1(prompt, return_tensors='pt').to(device1)
         token1.append(inputs_model1['input_ids'].cpu().numpy())
@@ -65,12 +64,12 @@ if __name__ == "__main__":
         修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
-    device_model1 = torch.device("cuda:0")
-    device_model2 = torch.device("cuda:1")
+    device_model1 = torch.device("cuda:2")
+    device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B"
-    model_2 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
     
     data_file = "/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"
 
