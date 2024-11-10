@@ -14,8 +14,8 @@ def imd_score(
     R: Union[torch.Tensor, npt.NDArray],
     Rp: Union[torch.Tensor, npt.NDArray],
     shape: SHAPE_TYPE,
-    approximation_steps: int = 8000,
-    n_repeat: int = 5,
+    approximation_steps: int = 8000,    # default: 8000
+    n_repeat: int = 5,                  # default: 5
 ) -> float:
     try:
         import msid
@@ -24,7 +24,7 @@ def imd_score(
             "Install IMD from" "https://github.com/xgfs/imd.git." "Clone and cd into directory, then `pip install .`"
         )
         raise e
-
+    print(f"\t imd param: approximation_steps:{approximation_steps}, n_repeat:{n_repeat}")
     R, Rp = flatten(R, Rp, shape=shape)
     R, Rp = to_numpy_if_needed(R, Rp)
 

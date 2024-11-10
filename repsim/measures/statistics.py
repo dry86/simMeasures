@@ -72,7 +72,8 @@ def torch_uniformity_difference(
     shape: tuple,
     n_jobs: Optional[int] = None,
 ) -> float:
-    R, Rp = torch.tensor(R).view(*shape), torch.tensor(Rp).view(*shape)
+    # R, Rp = torch.tensor(R).view(*shape), torch.tensor(Rp).view(*shape)
+    R, Rp = torch.tensor(R), torch.tensor(Rp)
 
     def uniformity(x, t=2):
         pdist = torch.cdist(x, x, p=2) ** 2  # 计算平方欧氏距离
@@ -137,7 +138,7 @@ class MagnitudeDifference(RepresentationalSimilarityMeasure):
 class UniformityDifference(RSMSimilarityMeasure):
     def __init__(self):
         super().__init__(
-            sim_func=uniformity_difference,
+            sim_func=torch_uniformity_difference,   # torch version
             larger_is_more_similar=False,
             is_metric=False,
             is_symmetric=True,

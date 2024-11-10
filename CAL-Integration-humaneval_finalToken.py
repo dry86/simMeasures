@@ -13,7 +13,7 @@ from repsim.measures.procrustes import orthogonal_procrustes
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
-PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)
@@ -231,8 +231,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/codeSummary_CSearchNet/{lang}/"   # M
-    pt_model_2 = model2_path + f"/pt_file/codeSummary_CSearchNet/{lang}/"
+    pt_model_1 = model1_path + f"/pt_file/textGen_humaneval/{lang}/"   # M
+    pt_model_2 = model2_path + f"/pt_file/textGen_humaneval/{lang}/"
     hidden_states_model1 = concatenate_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = concatenate_hidden_states(pt_model_2, model_idx2, device2)
 
@@ -252,16 +252,16 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
 
         # CCA
         # calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # Alignment
-        # cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # RSM
-        # cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # Neighbors
-        # cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
+        # Alignment
+        cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
+        # RSM
+        cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
+        # Neighbors
+        cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
         # Topology
         cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
         # Statistic
-        # cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
 
 
 if __name__ == "__main__":
@@ -269,14 +269,14 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-codeSummary-CSearchNet.json5'))
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-humaneval.json5'))  # M
 
     for config in configs:
         prefix_model_path = config.get('prefix_model_path')
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         lang = config.get('lang')
 
         model_pair = model_idx1 + "-" + model_idx2
-        saver_name = model_pair + "-codeSummary-CSearchNet-test_imd-1000-10" # M
+        saver_name = model_pair + "-humaneval_finalToken" # M
         sheet_name = model_idx1 + "-" + model_idx2.split("-")[-1] + "-" + lang
         saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 
