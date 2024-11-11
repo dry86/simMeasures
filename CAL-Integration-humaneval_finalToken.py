@@ -240,7 +240,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 30:
+        # if i < 8:
         #     continue
 
         layer_hidden_states_1 = hidden_states_model1[i]
