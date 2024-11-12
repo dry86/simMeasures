@@ -1,15 +1,13 @@
 import time 
 import torch
 import json5
-import jsonlines
 import numpy as np
 from tqdm import tqdm
 from transformers import AutoTokenizer
 from example import cca_core
-from utils import ResultSaver
+from utils import ResultSaver, combine_names
 from functools import wraps
-from getHiddenStates import concatenate_hidden_states, concatenate_last_layer_hidden_states
-from repsim.measures.procrustes import orthogonal_procrustes
+from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_states
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
@@ -227,14 +225,14 @@ def calculate_cca(acts1, acts2, shape, idx, saver):
 
 
 
-def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
+def main(task, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/codeRepair/{lang}/"   # M
-    pt_model_2 = model2_path + f"/pt_file/codeRepair/{lang}/"   # M
-    hidden_states_model1 = concatenate_hidden_states(pt_model_1, model_idx1, device1)
-    hidden_states_model2 = concatenate_hidden_states(pt_model_2, model_idx2, device2)
+    pt_model_1 = model1_path + f"/pt_file/{task}/{lang}/"   
+    pt_model_2 = model2_path + f"/pt_file/{task}/{lang}/"   
+    hidden_states_model1 = only_first_pt_hidden_states(pt_model_1, model_idx1, device1)
+    hidden_states_model2 = only_first_pt_hidden_states(pt_model_2, model_idx2, device2)
 
     # 获取模型的总层数并计算每一层的 score
     num_layers = len(hidden_states_model1)
@@ -251,7 +249,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         shape = "nd"
 
         # CCA
-        calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
+        # calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
         # Alignment
         cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
         # RSM
@@ -269,40 +267,42 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-codeRepair.json5'))    # M
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
 
     for config in configs:
-        prefix_model_path = config.get('prefix_model_path')
+        task = config.get('task')
         model_idx1 = config.get('model_idx1')
         model_idx2 = config.get('model_idx2')
         lang = config.get('lang')
-        print(prefix_model_path, model_idx1, model_idx2, lang)
+        print(task, model_idx1, model_idx2, lang)
     print("-"*50)
 
     for config in configs:
-        prefix_model_path = config.get('prefix_model_path')
+        task = config.get('task')
+        prefix_model_path_idx1 = config.get('prefix_model_path_idx1')
+        prefix_model_path_idx2 = config.get('prefix_model_path_idx2')
         model_idx1 = config.get('model_idx1')
         model_idx2 = config.get('model_idx2')
         lang = config.get('lang')
 
         model_pair = model_idx1 + "-" + model_idx2
-        saver_name = model_pair + "-codeRepair" # M
-        sheet_name = model_idx1 + "-" + model_idx2.split("-")[-1] + "-" + lang
-        saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
+        saver_name = model_pair + f"-{task}"
+        sheet_name = combine_names(model_idx1, model_idx2, lang)
+        saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 
         # 调用主函数
-        model_1 = prefix_model_path + model_idx1
-        model_2 = prefix_model_path + model_idx2
-        print(f"Current work: {model_pair}, lang: {lang}, CCA series epsilon=1e-6")
-        main(model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
-        print(f"Finish work: {model_pair}, lang: {lang}, CCA series epsilon=1e-6")
+        model_1 = prefix_model_path_idx1 + model_idx1
+        model_2 = prefix_model_path_idx2 + model_idx2
+        print(f"Current work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
+        main(task, model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
+        print(f"Finish work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
         print("-"*50)
         print("-"*50)
         print("-"*50)

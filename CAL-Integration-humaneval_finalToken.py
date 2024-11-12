@@ -240,7 +240,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 8:
+        # if i < 27:
         #     continue
 
         layer_hidden_states_1 = hidden_states_model1[i]
@@ -269,8 +269,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:2")  # 第x块GPU
-    device_model2 = torch.device("cuda:3")  # 第y块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'

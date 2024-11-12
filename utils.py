@@ -6,6 +6,33 @@ import math
 from openpyxl import load_workbook
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+
+
+def combine_names(name1, name2, name3, max_length=31):
+    def shorten_name(name):
+      # 定义名称缩写的条件
+      if "codeLlama-7b" in name:
+          return name.replace("codeLlama-7b", "cL7b")
+      elif "dsc-7b-base-v1.5" in name:
+          return name.replace("dsc-7b-base-v1.5", "dsc7b")
+      elif "Qwen2.5-Coder-7B" in name:
+          return name.replace("Qwen2.5-Coder-7B", "QwC7b")
+      # 根据需要添加更多缩写规则
+      return name  # 如果不符合任何条件，返回原始名称
+
+    # 依次缩写每个名称
+    name1_short = shorten_name(name1)
+    name2_short = shorten_name(name2)
+    name3_short = shorten_name(name3)
+    
+    combined_name = f"{name1_short} vs {name2_short} {name3_short}"
+    
+    # 如果缩写后的名称仍然超长，进行截取
+    if len(combined_name) > max_length:
+        combined_name = combined_name[:max_length]
+    
+    return combined_name
+
 # 定义模型加载函数
 def load_model_and_tokenizer(model_path: str, device: torch.device):
     """

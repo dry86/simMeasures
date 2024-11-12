@@ -17,6 +17,22 @@ def get_batch_number(filename, keyword):
     """从文件名中提取批次号，例如 'hsm1_batch_19.pt' 提取出 19"""
     return int(filename.split(f"{keyword}batch_")[-1].split('.pt')[0])
 
+def only_first_pt_hidden_states(directory, keyword, device):
+    """加载第一块.pt文件的隐藏状态张量"""
+    # 找到以“1.pt”结尾的文件
+    pt_files = [filename for filename in os.listdir(directory) if filename.startswith(keyword) and filename.endswith('1.pt')]
+    # 检查并加载
+    if len(pt_files) > 0:
+        file_path = os.path.join(directory, pt_files[0])
+        hidden_states = load_hidden_states(file_path, device)
+        # 加载模型参数
+        # model.load_state_dict(model_state_dict)
+        print(f"Loaded file: {file_path}")
+        return hidden_states
+    else:
+        print("No file ending with '1.pt' found in the directory.")
+    return 0
+
 def concatenate_hidden_states(directory, keyword, device):
     """加载并拼接目录中以特定关键字开头的所有.pt文件的隐藏状态张量"""
     keyword = keyword + '_'

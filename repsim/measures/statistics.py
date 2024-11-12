@@ -73,7 +73,7 @@ def torch_uniformity_difference(
     n_jobs: Optional[int] = None,
 ) -> float:
     # R, Rp = torch.tensor(R).view(*shape), torch.tensor(Rp).view(*shape)
-    R, Rp = torch.tensor(R), torch.tensor(Rp)
+    R, Rp = torch.tensor(R, device='cuda:3'), torch.tensor(Rp, device='cuda:3')
 
     def uniformity(x, t=2):
         pdist = torch.cdist(x, x, p=2) ** 2  # 计算平方欧氏距离
