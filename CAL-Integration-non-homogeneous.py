@@ -11,7 +11,7 @@ from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_stat
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
-PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)
@@ -190,12 +190,12 @@ def cal_Alignment(acts1, acts2, shape, idx, saver):
 
     saver.print_and_save("OrthProCAN", calculate_opcan(acts1, acts2, shape), idx)
     saver.print_and_save("OrthAngShape", calculate_asm(acts1, acts2, shape), idx)
-    saver.print_and_save("LinRegre", calculate_linear_regression(acts1, acts2, shape), idx)
+    # saver.print_and_save("LinRegre", calculate_linear_regression(acts1, acts2, shape), idx)
     saver.print_and_save("AliCosSim", calculate_aligned_cosine_sim(acts1, acts2, shape), idx)
     saver.print_and_save("SoftCorMatch", calculate_soft_correlation_match(acts1, acts2, shape), idx)
     saver.print_and_save("HardCorMatch", calculate_hard_correlation_match(acts1, acts2, shape), idx)
-    saver.print_and_save("PermProc", calculate_permutation_procrustes(acts1, acts2, shape), idx)
-    saver.print_and_save("ProcDict", calculate_procrustes_size_and_shape_distance(acts1, acts2, shape), idx)
+    # saver.print_and_save("PermProc", calculate_permutation_procrustes(acts1, acts2, shape), idx)
+    # saver.print_and_save("ProcDict", calculate_procrustes_size_and_shape_distance(acts1, acts2, shape), idx)
 
 def calculate_cca(acts1, acts2, shape, idx, saver):
     @time_it
@@ -225,41 +225,47 @@ def calculate_cca(acts1, acts2, shape, idx, saver):
 
 
 
-def main(task, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
+def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/{task}/{lang}/"   
+    pt_model_1 = model1_path + f"/pt_file/{task}/{lang}/"       # os.path.join(model1_path, "pt_file", task, lang)
     pt_model_2 = model2_path + f"/pt_file/{task}/{lang}/"   
     hidden_states_model1 = only_first_pt_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = only_first_pt_hidden_states(pt_model_2, model_idx2, device2)
 
-    # 获取模型的总层数并计算每一层的 score
-    num_layers = len(hidden_states_model1)
-    for i in tqdm(range(num_layers)):
-
-        # if i < 30:
-        #     continue
-
-        layer_hidden_states_1 = hidden_states_model1[i]
-        layer_hidden_states_2 = hidden_states_model2[i]
-
+    # 选择前num_layers_to_select层和后num_layers_to_select层
+    selected_layers_1 = torch.cat((hidden_states_model1[:num_layers_to_select], hidden_states_model1[-num_layers_to_select:]), dim=0)
+    selected_layers_2 = torch.cat((hidden_states_model2[:num_layers_to_select], hidden_states_model2[-num_layers_to_select:]), dim=0)
+    
+    for i in tqdm(range(2 * num_layers_to_select)):
+        # 获取当前层的隐藏状态
+        layer_hidden_states_1 = selected_layers_1[i]
+        layer_hidden_states_2 = selected_layers_2[i]
+        
+        # 转换为numpy数组
         acts1_numpy = layer_hidden_states_1.cpu().numpy()
         acts2_numpy = layer_hidden_states_2.cpu().numpy()
+
+        layer_idx = i
+        # 标记后num_layers_to_select层从多少层开始（只在后半部分需要）
+        if i >= num_layers_to_select:
+            layer_idx = i + num_layers_to_select  # 后10层的索引
+
         shape = "nd"
 
         # CCA
-        # calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
+        # calculate_cca(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Alignment
-        cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_Alignment(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # RSM
-        cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_RSM(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Neighbors
-        cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Topology
-        # cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
+        # cal_Topology(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Statistic
-        cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
 
 
 if __name__ == "__main__":
@@ -269,6 +275,9 @@ if __name__ == "__main__":
 
     device_model1 = torch.device("cuda:2")  # 第x块GPU
     device_model2 = torch.device("cuda:3")  # 第y块GPU
+
+    # device_model1 = torch.device("cpu")  # 第x块GPU
+    # device_model2 = torch.device("cpu")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
@@ -291,6 +300,7 @@ if __name__ == "__main__":
         model_idx1 = config.get('model_idx1')
         model_idx2 = config.get('model_idx2')
         lang = config.get('lang')
+        num_layers_to_select = config.get('num_layers_to_select')
 
         model_pair = model_idx1 + "-" + model_idx2
         saver_name = model_pair + f"-{task}"
@@ -301,7 +311,7 @@ if __name__ == "__main__":
         model_1 = prefix_model_path_idx1 + model_idx1
         model_2 = prefix_model_path_idx2 + model_idx2
         print(f"Current work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
-        main(task, model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
+        main(task, num_layers_to_select, model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
         print(f"Finish work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
         print("-"*50)
         print("-"*50)
