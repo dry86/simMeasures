@@ -11,7 +11,7 @@ from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_stat
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
-PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)

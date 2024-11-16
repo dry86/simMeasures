@@ -9,7 +9,7 @@ sns.set_style("whitegrid")
 font = {'family': 'DejaVu Sans', 'size': 12}
 plt.rc('font', **font)
 
-def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color_palette, mark):
+def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color_palette, mark, save_path):
     # 找到所有以"codeRepair"结尾的xlsx文件
     excel_files = []
     for root, _, files in os.walk(dir_path):
@@ -26,19 +26,16 @@ def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color
         
         # 筛选以“language”结尾的sheet
         for sheet_name in xls.sheet_names:
-            # if sheet_name.endswith("python") or sheet_name.endswith("Python"):
-            #     data_groups["python"].append((file, sheet_name))
-            # elif sheet_name.endswith("cpp") or sheet_name.endswith("CPP"):
-            #     data_groups["cpp"].append((file, sheet_name))
-            # elif sheet_name.endswith("java"):
-            #     data_groups["java"].append((file, sheet_name))
-            # elif sheet_name.endswith("py150"):
-            #     data_groups["py150"].append((file, sheet_name))
-            # elif sheet_name.endswith("javaCorpus"):
-            #     data_groups["javaCorpus"].append((file, sheet_name))
-
-            if sheet_name.endswith("java"):
+            if sheet_name.endswith("python") or sheet_name.endswith("Python"):
+                data_groups["python"].append((file, sheet_name))
+            elif sheet_name.endswith("cpp") or sheet_name.endswith("CPP"):
+                data_groups["cpp"].append((file, sheet_name))
+            elif sheet_name.endswith("java"):
                 data_groups["java"].append((file, sheet_name))
+            elif sheet_name.endswith("py150"):
+                data_groups["py150"].append((file, sheet_name))
+            elif sheet_name.endswith("javaCorpus"):
+                data_groups["javaCorpus"].append((file, sheet_name))
 
 
     # 删除空项并对每组sheet按字母排序
@@ -101,12 +98,14 @@ def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color
         # fig.legend(handles, labels, loc='upper center', ncol=len(measure_columns), frameon=True, fontsize=10)
 
         # 保存和显示图像
-        save_dir_task = f"/newdisk/public/wws/simMeasures/pyplot/figure/{task_suffix}/"
+        # save_dir_task = f"/newdisk/public/wws/simMeasures/pyplot/fig_non_homogeneous_models/{task_suffix}/"
+        save_dir_task = os.path.join(save_path, task_suffix)
         if not os.path.exists(save_dir_task):
             os.makedirs(save_dir_task)
         plt.savefig(f"{save_dir_task}{task_suffix}_{category}_lineplots_{group}.png", dpi=300, bbox_inches='tight')
 
-        save_dir_cate = f"/newdisk/public/wws/simMeasures/pyplot/figure/{category}/"
+        # save_dir_cate = f"/newdisk/public/wws/simMeasures/pyplot/fig_non_homogeneous_models/{category}/"
+        save_dir_cate = os.path.join(save_path, category)
         if not os.path.exists(save_dir_cate):
             os.makedirs(save_dir_cate)
         plt.savefig(f"{save_dir_cate}{task_suffix}_{category}_lineplots_{group}.png", dpi=300, bbox_inches='tight')
@@ -125,21 +124,22 @@ if __name__ == "__main__":
     marker_schemes = {"Alignment": "p", "RSM": "o", "Neighbors": "^", "Topology": "s", "Statistic": "v"}
 
     # 分析数据的文件路径
-    dir_path = "/newdisk/public/wws/simMeasures/results/final_strategy"  
+    dir_path = "/newdisk/public/wws/simMeasures/results/final_strategy"
+    save_path = "/newdisk/public/wws/simMeasures/pyplot/figure"  
 
-    tasks = ["humaneval_finalToken", "mbpp_finalToken", "lineCompletion", "codeSummary-CSearchNet", "codeRepair"]
+    tasks = ["textGen_humaneval", "textGen_MBPP", "lineCompletion", "codeSummary-CSearchNet", "codeRepair"]
     measures_dict = {
     "Alignment": ["OrthProCAN", "OrthAngShape", "AliCosSim", "SoftCorMatch", "HardCorMatch"],  # 
     "RSM": ["RSA", "CKA", "DisCor", "EOlapScore"],
     "Neighbors": ["JacSim", "SecOrdCosSim", "RankSim", "RankJacSim"],
-    "Topology": ["IMD"],
+    # "Topology": ["IMD"],
     "Statistic": ["MagDiff", "ConDiff", "UniDiff"]
     }
 
-    tasks = ["humaneval_finalToken"]
+    tasks = ["mbpp_finalToken"]
     
     for task in tasks:
         for cate, measure in measures_dict.items():
 
-            plot_data_from_excel(dir_path, task, cate, measure, color_schemes[cate], marker_schemes[cate])
+            plot_data_from_excel(dir_path, task, cate, measure, color_schemes[cate], marker_schemes[cate], save_path)
             # break

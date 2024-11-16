@@ -5,6 +5,8 @@ __pycache__/
 /pt_file/
 /results/
 /config/
+/pyplot/
+!/pyplot/*.py
 
 # C extensions
 *.so
