@@ -252,6 +252,9 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
         if i >= num_layers_to_select:
             layer_idx = i + num_layers_to_select  # 后10层的索引
 
+        # if layer_idx < 28:
+        #     continue
+
         shape = "nd"
 
         # CCA

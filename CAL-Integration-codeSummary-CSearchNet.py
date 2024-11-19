@@ -240,7 +240,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     num_layers = len(hidden_states_model1)
     for i in tqdm(range(num_layers)):
 
-        # if i < 30:
+        # if i < 16:
         #     continue
 
         layer_hidden_states_1 = hidden_states_model1[i]
@@ -251,17 +251,17 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         shape = "nd"
 
         # CCA
-        # calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # Alignment
-        # cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # RSM
-        # cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
-        # # Neighbors
-        # cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
+        calculate_cca(acts1_numpy, acts2_numpy, shape, i, saver)
+        # Alignment
+        cal_Alignment(acts1_numpy, acts2_numpy, shape, i, saver)
+        # RSM
+        cal_RSM(acts1_numpy, acts2_numpy, shape, i, saver)
+        # Neighbors
+        cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
         # Topology
         cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
         # Statistic
-        # cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
+        cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
 
 
 if __name__ == "__main__":
@@ -269,8 +269,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model2 = torch.device("cuda:3")  # 第y块GPU
 
     # device_model1 = 'cpu'
     # device_model2 = 'cpu'
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         lang = config.get('lang')
 
         model_pair = model_idx1 + "-" + model_idx2
-        saver_name = model_pair + "-codeSummary-CSearchNet-test_imd-1000-10" # M
+        saver_name = model_pair + "-codeSummary-CSearchNet" # M
         sheet_name = model_idx1 + "-" + model_idx2.split("-")[-1] + "-" + lang
         saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 
