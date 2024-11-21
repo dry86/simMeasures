@@ -19,19 +19,23 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer2.padding_side = "right"
 
-    # prompt_ = "Please fix the bug in the following code: "
-    # print(f"prompt: {prompt_}")
+    prompt_ = "You are an expert programmer. Implement the function below as described:"
+    print(f"prompt_: {prompt_}")
+    print(f"prompt_: {len(prompt_)}")
     token1 = []
     token2 = []
     # 读取数据文件
     with jsonlines.open(data_file_path) as reader:
         for obj in reader:
+            # task_id = obj.get('task_id')
+            # prompt = obj.get('text')
+            # print(f"Task ID: {task_id}, Prompt: {prompt}")
             task_id = obj.get('task_id')
-            prompt = obj.get('text')
-            print(f"Task ID: {task_id}, Prompt: {prompt}")
-            # task_id = obj.get('repo')
-            # prompt = prompt_ + obj.get('code')
-            # print(f"Task ID: {task_id}")
+            prompt = prompt_ + obj.get('prompt')
+            print(f"prompt: {len(obj.get('prompt'))}")
+            print(f"_prompt_: {len(prompt)}")
+            # prompt = obj.get('prompt')
+            print(f"Task ID: {task_id}")
 
             inputs_model1 = tokenizer1(prompt, return_tensors='pt').to(device1)
             token1.append(inputs_model1['input_ids'].cpu().numpy())
@@ -52,14 +56,14 @@ if __name__ == "__main__":
         修改 'data_file' 要分析的数据集语言, 看此语言数据集在90%情况下token的大小, 然后传给save_tensor.py 中 padding_max_length 
     """
     # 指定GPU设备
-    device_model1 = torch.device("cuda:0")
-    device_model2 = torch.device("cuda:1")
+    device_model1 = torch.device("cuda:2")
+    device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
+    model_2 = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-7b-base-v1.5"
     
-    data_file = "/newdisk/public/wws/Dataset/humaneval-x-main/data/python/data/humaneval.jsonl"
+    data_file = "/newdisk/public/wws/Dataset/humaneval-x-main/data/java/data/humaneval.jsonl"
 
     # 调用主函数
     main(model_1, model_2, data_file, device_model1, device_model2)
