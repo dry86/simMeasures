@@ -18,7 +18,7 @@ def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color
                 excel_files.append(os.path.join(root, file))
 
     # 用于存储符合条件的sheet数据
-    data_groups = {"python": [], "cpp": [], "java": [], "py150": [], "javaCorpus": []}
+    data_groups = {"python": [], "cpp": [], "java": []}
 
     # 遍历每个Excel文件
     for file in excel_files:
@@ -26,16 +26,12 @@ def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color
         
         # 筛选以“language”结尾的sheet
         for sheet_name in xls.sheet_names:
-            if sheet_name.endswith("python") or sheet_name.endswith("Python"):
+            if sheet_name.endswith("python") or sheet_name.endswith("Python") or sheet_name.endswith("py150"):
                 data_groups["python"].append((file, sheet_name))
             elif sheet_name.endswith("cpp") or sheet_name.endswith("CPP"):
                 data_groups["cpp"].append((file, sheet_name))
-            elif sheet_name.endswith("java"):
+            elif sheet_name.endswith("java") or sheet_name.endswith("javaCorpus"):
                 data_groups["java"].append((file, sheet_name))
-            elif sheet_name.endswith("py150"):
-                data_groups["py150"].append((file, sheet_name))
-            elif sheet_name.endswith("javaCorpus"):
-                data_groups["javaCorpus"].append((file, sheet_name))
 
 
     # 删除空项并对每组sheet按字母排序
@@ -78,7 +74,7 @@ def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color
                 )
 
             # 设置标题、标签和图例
-            ax.set_title(f"{sheet_name}", fontweight='bold', fontsize=14)
+            ax.set_title(f"{sheet_name}", fontweight='bold', fontsize=14)   # Todo: 调整这里 设置title
             ax.set_xlabel("Layer", fontsize=12)
             ax.set_ylabel("Values", fontsize=12)
             # ax.legend(loc='lower right', frameon=True, fontsize=10)
