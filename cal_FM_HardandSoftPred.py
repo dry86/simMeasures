@@ -22,8 +22,10 @@ def load_model_and_tokenizer(model_path: str, device: torch.device):
     return model, tokenizer
 
 def mask_code_keywords(code: str) -> list:
+
+    # Todo: ❗️不同语言的注释符号 不同
     # 匹配 """ 注释的正则表达式
-    comment_pattern = r'""".*?"""'
+    comment_pattern = r'""".*?"""'  
 
     # 找到所有 """ 注释内容
     comments = [match.span() for match in re.finditer(comment_pattern, code, re.DOTALL)]
@@ -47,7 +49,15 @@ def mask_code_keywords(code: str) -> list:
         # 生成代码副本并进行 mask
         new_code = list(code)  # 把代码转为字符列表，便于替换
         new_code[start:end] = '<FILL_ME>'  # 替换当前位置的关键字为 <FILL_ME>
-        masked_versions.append("".join(new_code))
+
+        # # Strategy 1: 将<MASK>前后的部分加入到结果列表
+        # masked_versions.append("".join(new_code))
+
+        # Strategy 2: 截断<MASK>之后的部分
+        adjusted_end = start + len('<FILL_ME>')
+        truncated_code = "".join(new_code[:adjusted_end])
+        # Strategy 2: 将截断后的版本加入到结果列表
+        masked_versions.append(truncated_code)
 
         # 保存被 mask 掉的关键字
         ground_labels.append(word)
@@ -355,7 +365,7 @@ if __name__ == "__main__":
     model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
     model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct" 
 
-    # 打开jsonl文件并遍历
-    file_path = '/newdisk/public/wws/Dataset/humaneval-x-main/data/cpp/data/humaneval.jsonl'  # Dataset
+    # Dataset
+    file_path = '/newdisk/public/wws/Dataset/humaneval-x-main/data/python/data/humaneval.jsonl'
 
     main(model_1, model_2, file_path, device_model1, device_model2)
