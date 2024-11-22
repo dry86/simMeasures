@@ -10,7 +10,7 @@ font = {'family': 'DejaVu Sans', 'size': 12}
 plt.rc('font', **font)
 
 def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color_palette, mark, save_path):
-    # 找到所有以"codeRepair"结尾的xlsx文件
+    # 找到所有以"tasks"结尾的xlsx文件
     excel_files = []
     for root, _, files in os.walk(dir_path):
         for file in files:

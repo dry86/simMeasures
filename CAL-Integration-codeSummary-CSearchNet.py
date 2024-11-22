@@ -259,7 +259,7 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
         # Neighbors
         cal_Neighbors(acts1_numpy, acts2_numpy, shape, i, saver)
         # Topology
-        cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
+        # cal_Topology(acts1_numpy, acts2_numpy, shape, i, saver)
         # Statistic
         cal_Statistic(acts1_numpy, acts2_numpy, shape, i, saver)
 

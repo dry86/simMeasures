@@ -231,8 +231,8 @@ def main(model1_path, model2_path, model_idx1, model_idx2, lang, device1, device
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/textGen_humaneval_instrcut/{lang}/"   # M
-    pt_model_2 = model2_path + f"/pt_file/textGen_humaneval_instrcut/{lang}/"
+    pt_model_1 = model1_path + f"/pt_file/textGen_humaneval_instrcut2/{lang}/"   # M
+    pt_model_2 = model2_path + f"/pt_file/textGen_humaneval_instrcut2/{lang}/"
     hidden_states_model1 = concatenate_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = concatenate_hidden_states(pt_model_2, model_idx2, device2)
 
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         lang = config.get('lang')
 
         model_pair = model_idx1 + "-" + model_idx2
-        saver_name = model_pair + "-textGen_humaneval_instrcut" # M
+        saver_name = model_pair + "-textGen_humaneval_instrcut2" # M
         sheet_name = model_idx1 + "-" + model_idx2.split("-")[-1] + "-" + lang
         saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 

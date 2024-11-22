@@ -19,7 +19,7 @@ def main(model1_path, model2_path, data_file_path, device1, device2):
     tokenizer2.pad_token = tokenizer2.eos_token
     tokenizer2.padding_side = "right"
 
-    prompt_ = "You are an expert programmer. Implement the function below as described:"
+    prompt_ = "Please implement the function below as described: "
     print(f"prompt_: {prompt_}")
     print(f"prompt_: {len(prompt_)}")
     token1 = []
@@ -60,8 +60,8 @@ if __name__ == "__main__":
     device_model2 = torch.device("cuda:3")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B-Instruct"
-    model_2 = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-7b-base-v1.5"
+    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+    model_2 = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-6.7b-instruct"
     
     data_file = "/newdisk/public/wws/Dataset/humaneval-x-main/data/java/data/humaneval.jsonl"
 

@@ -16,7 +16,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
 
     data_file_path = f"/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl" # M
 
-    save_dir = model_path + "/pt_file" + "/textGen_humaneval_instrcut/" +  lang + "/" # M
+    save_dir = model_path + "/pt_file" + "/textGen_humaneval_instrcut2/" +  lang + "/" # M
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -24,7 +24,7 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     accumulated_hidden_states = []
     batch_counter = 0
 
-    prompt_ = "You are an expert programmer. Implement the function below as described:"
+    prompt_ = "Please implement the function below as described: "
     print(f"prompt_: {prompt_}")
     batch_idx = 1
     print(f"\tbatch process start!")
@@ -96,11 +96,11 @@ if __name__ == "__main__":
 
 
     # 指定GPU设备
-    device_model = torch.device("cuda:2")
+    device_model = torch.device("cuda:1")
 
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-textGen-humaneval-Instruct.json5')) # M
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-textGen-humaneval-Instruct2.json5')) # M
 
     for config in configs:
         model_idx = config.get('model_idx')

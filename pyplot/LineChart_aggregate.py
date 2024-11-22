@@ -1,70 +1,140 @@
 import os
 import pandas as pd
-import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
+# 配置图像样式
+sns.set_style("whitegrid")
+# color_palette = ["#038355", "#ffc34e", "#4e79a7", "#f28e2b"]  # 定义四种颜色
+font = {'family': 'DejaVu Sans', 'size': 12}
+plt.rc('font', **font)
 
-def process_subdir(subdir_path, output_dir, tasks):
-    # 获取当前子文件夹名称作为输出文件的文件名
-    subdir_name = os.path.basename(subdir_path)
-    
-    # 用于存储各个分类的DataFrame
+def plot_data_from_excel(dir_path, task_suffix, category, measure_columns, color_palette, mark, save_path):
+    # 找到所有以"tasks"结尾的xlsx文件
+    excel_files = []
+    for root, _, files in os.walk(dir_path):
+        for file in files:
+            if any(file.endswith(f"{suffix}.xlsx") for suffix in task_suffix):
+                excel_files.append(os.path.join(root, file))
+
+    # 用于存储符合条件的sheet数据
     data_groups = {"python": [], "cpp": [], "java": []}
-    
-    # 遍历subdir_path文件夹中的所有xlsx文件
-    for file in os.listdir(subdir_path):
-        if file.endswith(".xlsx"):
-            file_path = os.path.join(subdir_path, file)
-            
-            # 检查文件名是否以tasks中的某个任务名结尾
-            if any(file.endswith(f"{task}.xlsx") for task in tasks):
-                # 读取Excel文件中的所有sheet_name
-                all_sheets = pd.ExcelFile(file_path).sheet_names
-                
-                for sheet in all_sheets:
-                    # 将符合条件的sheet分组
-                    if "python" in sheet.lower() or "py150" in sheet.lower():
-                        data_groups["python"].append(pd.read_excel(file_path, sheet_name=sheet))
-                    elif "cpp" in sheet.lower():
-                        data_groups["cpp"].append(pd.read_excel(file_path, sheet_name=sheet))
-                    elif "java" in sheet.lower() or "javaCorpus" in sheet.lower():
-                        data_groups["java"].append(pd.read_excel(file_path, sheet_name=sheet))
-    
-    if not any(data_groups.values()):
-        print(f"No valid sheets to process in {subdir_path}. Skipping.")
-        return
 
-    # 为每个组中的DataFrame计算平均值并保存
-    for language, dfs in data_groups.items():
-        if dfs:
-            # 逐元素相加并求平均
-            sum_df = dfs[0].copy()  # 创建一个与第一个DataFrame结构相同的副本，用于存储求和
-            for df in dfs[1:]:
-                sum_df += df  # 逐元素相加
-            
-            averaged_df = sum_df / len(dfs)  # 逐元素求平均
-
-            # 保存处理后的DataFrame到Excel文件
-            output_language_file = os.path.join(output_dir, f"{subdir_name}_{language}.xlsx")
-            averaged_df.to_excel(output_language_file, index=False)
-            print(f"Processed and saved {output_language_file}")
-
-def process_all_subdirs(base_dir, output_dir, tasks):
-    # 遍历base_dir文件夹下的所有子文件夹
-    for subdir_name in os.listdir(base_dir):
-        subdir_path = os.path.join(base_dir, subdir_name)
+    # 遍历每个Excel文件
+    for file in excel_files:
+        xls = pd.ExcelFile(file)
         
-        # 如果是文件夹，调用处理函数
-        if os.path.isdir(subdir_path) and subdir_name != os.path.basename(output_dir):
-            process_subdir(subdir_path, output_dir, tasks)
+        # 筛选以“language”结尾的sheet
+        for sheet_name in xls.sheet_names:
+            if sheet_name.endswith("python") or sheet_name.endswith("Python") or sheet_name.endswith("py150"):
+                data_groups["python"].append((file, sheet_name))
+            elif sheet_name.endswith("java") or sheet_name.endswith("javaCorpus"):
+                data_groups["java"].append((file, sheet_name))
+
+
+    # 删除空项并对每组sheet按字母排序
+    data_groups = {group: sorted(sheets, key=lambda x: x[1].lower()) for group, sheets in data_groups.items() if sheets}
+
+    # 定义每行3个图像的布局
+    for group, sheets in data_groups.items():
+        n_files = len(sheets)
+        n_cols = 3
+        n_rows = (n_files + n_cols - 1) // n_cols
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, 6 * n_rows))
+        fig.suptitle(f"{task_suffix}: {category} {group.capitalize()}", fontweight='bold', fontsize=16)
+        plt.subplots_adjust(hspace=0.3)
+
+        # 绘制每个符合条件的sheet
+        for idx, (file, sheet_name) in enumerate(sheets):
+            # 读取sheet数据
+            df = pd.read_excel(file, sheet_name=sheet_name)
+            df = df[measure_columns]
+
+            # 获取子图位置
+            ax = axes[idx // n_cols, idx % n_cols] if n_rows > 1 else axes[idx % n_cols]
+
+            # 绘制图像
+            x_values = df.index
+            for i, col in enumerate(df.columns):
+                sns.lineplot(
+                    x=x_values, 
+                    y=df[col], 
+                    color=color_palette[i], 
+                    linewidth=2.0, 
+                    linestyle='-',
+                    marker=mark, 
+                    # markerfacecolor="white",
+                    # markeredgecolor=color_palette[i], 
+                    markeredgewidth=0, 
+                    # markersize=4, 
+                    label=col, 
+                    ax=ax
+                )
+
+            # 设置标题、标签和图例
+            ax.set_title(f"{sheet_name}", fontweight='bold', fontsize=14)   # Todo: 调整这里 设置title
+            ax.set_xlabel("Layer", fontsize=12)
+            ax.set_ylabel("Values", fontsize=12)
+            # ax.legend(loc='lower right', frameon=True, fontsize=10)
+            ax.set_xticks(range(0, len(x_values), max(1, len(x_values) // 10)))
+
+            # 设置坐标轴样式
+            for spine in ax.spines.values():
+                spine.set_edgecolor("#CCCCCC")
+                spine.set_linewidth(1.5)
+
+        # 隐藏未使用的子图
+        for j in range(idx + 1, n_rows * n_cols):
+            fig.delaxes(axes.flatten()[j])
+
+        # # 添加共享图例
+        # handles, labels = ax.get_legend_handles_labels()
+        # fig.legend(handles, labels, loc='upper center', ncol=len(measure_columns), frameon=True, fontsize=10)
+
+        # 保存和显示图像
+
+        # save_dir_cate = f"/newdisk/public/wws/simMeasures/pyplot/fig_non_homogeneous_models/{category}/"
+        save_dir_cate = os.path.join(save_path, category)
+        if not os.path.exists(save_dir_cate):
+            os.makedirs(save_dir_cate)
+        plt.savefig(f"{save_dir_cate}/{category}_lineplots_{group}.png", dpi=300, bbox_inches='tight')
+        # plt.show()
+        plt.close(fig)
+
 
 if __name__ == "__main__":
 
-    # 任务名列表
-    tasks = ["humaneval_finalToken", "mbpp_finalToken", "lineCompletion", "codeSummary-CSearchNet", "codeRepair"]
+    # 配色方案字典，每个类别对应一个颜色列表
+    color_schemes = {
+        "Alignment": ["#3b8bba", "#ffa600", "#bc5090", "#58508d", "#ff6361"],  
+        "RSM": ["#038355", "#ffc34e", "#4e79a7", "#f28e2b"],  
+        "Neighbors": ["#00a5cf", "#f9844a", "#ed6a5a", "#7c878e"],  
+        "Topology": ["#1a9988"],  
+        "Statistic": ["#ff9f1c", "#2ec4b6", "#e71d36"]  
+    }
+    marker_schemes = {"Alignment": "p", "RSM": "o", "Neighbors": "^", "Topology": "s", "Statistic": "v"}
 
-    # 设置输入文件夹路径和输出文件夹路径
-    base_dir = '/newdisk/public/wws/simMeasures/results/final_strategy'  # base目录，包含多个subdir_path
-    output_dir = '/newdisk/public/wws/simMeasures/results/final_strategy/tasks_aggre'  # 输出目录
+    # 分析数据的文件路径
+    dir_path = "/newdisk/public/wws/simMeasures/results/final_strategy_tasks_aggre"
+    save_path = "/newdisk/public/wws/simMeasures/pyplot/fig_aggregate"  
 
-    # 调用函数处理所有子文件夹
-    process_all_subdirs(base_dir, output_dir, tasks)
+    tasks = ["codeLlama-7b-codeLlama-7b-Python", "codeLlama-7b-codeLlama-7b-Instruct", "codeLlama-7b-Instruct-codeLlama-7b-Python",
+              "dsc-6.7b-base-dsc-6.7b-instruct", "dsc-7b-base-v1.5-dsc-7b-base-instruct-v1.5",
+              "Qwen2.5-Coder-7B-Qwen2.5-Coder-7B-Instruct"]
+
+    
+    measures_dict = {
+    "Alignment": ["OrthProCAN", "OrthAngShape", "AliCosSim", "SoftCorMatch", "HardCorMatch"],  # 
+    "RSM": ["RSA", "CKA", "DisCor", "EOlapScore"],
+    "Neighbors": ["JacSim", "SecOrdCosSim", "RankSim", "RankJacSim"],
+    # "Topology": ["IMD"],
+    "Statistic": ["MagDiff", "ConDiff", "UniDiff"]
+    }
+
+    # tasks = ["codeSummary-CSearchNet"]
+    
+
+    for cate, measure in measures_dict.items():
+
+        plot_data_from_excel(dir_path, tasks, cate, measure, color_schemes[cate], marker_schemes[cate], save_path)
+        # break
