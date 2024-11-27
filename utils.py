@@ -1,14 +1,70 @@
 import os
 import torch
 import pandas as pd
+import jsonlines
 import collections
 import math
 from openpyxl import load_workbook
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+# TodoList: 数据集的输入 构建一个Class  从类的成员函数中获取模式
+import jsonlines
+
+def extract_prompts(data_file_path, mode):
+    """
+    通用函数，用于从文件中提取Prompts。
+
+    参数:
+        data_file_path (str): 数据文件的路径。
+        mode (str): 解析模式，可选值：
+            - 'textGen_MBPP': 提取'text'字段。
+            - 'textGen_humaneval': 提取'prompt'字段。
+            - 'codeSummary_CSearchNet': 提取'code'字段，并添加固定前缀。
+            - 'codeRepair': 从纯文本文件逐行读取，并添加固定前缀。
+            - 'line_completion': 提取'input'字段。
+    
+    返回:
+        list: 提取的Prompt列表。
+    """
+    # 定义模式与字段及固定前缀的映射
+    mode_config = {
+        'textGen_MBPP': {'field': 'text', 'prefix': None, 'key': 'task_id'},
+        'textGen_humaneval': {'field': 'prompt', 'prefix': None, 'key': 'task_id'},
+        'codeSummary_CSearchNet': {'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo'},
+        'codeRepair': {'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None},
+        'line_completion': {'field': 'input', 'prefix': None, 'key': 'id'}
+    }
+    
+    if mode not in mode_config:
+        raise ValueError(f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}")
+    
+    config = mode_config[mode]
+    prompts = []
+
+    if mode == 'codeRepair':
+        # 特殊处理纯文本文件
+        with open(data_file_path, "r") as file:
+            lines = file.readlines()
+        lines = [line.strip() for line in lines]
+        
+        for i, line in enumerate(lines, start=1):
+            prompt = config['prefix'] + line
+            prompts.append((i, prompt))
+    else:
+        # 通用处理jsonlines文件
+        with jsonlines.open(data_file_path) as reader:
+            for obj in reader:
+                task_id = obj.get(config['key']) if config['key'] else None
+                content = obj.get(config['field'], "")
+                prompt = (config['prefix'] or "") + content
+                prompts.append((task_id, prompt))
+    
+    return prompts
 
 
-def combine_names(name1, name2, name3, max_length=31):
+# TodoList: analysis_max_token
+
+def combine_names(name1, name2, lang, max_length=31):
     def shorten_name(name):
       # 定义名称缩写的条件
       if "codeLlama-7b" in name:
@@ -17,19 +73,21 @@ def combine_names(name1, name2, name3, max_length=31):
           return name.replace("dsc-7b-base-v1.5", "dsc7b")
       elif "Qwen2.5-Coder-7B" in name:
           return name.replace("Qwen2.5-Coder-7B", "QwC7b")
+      # elif "codeShell-7b" in name:
+      #     return name.replace("codeShell-7b", "cSh7b")
       # 根据需要添加更多缩写规则
       return name  # 如果不符合任何条件，返回原始名称
 
     # 依次缩写每个名称
     name1_short = shorten_name(name1)
     name2_short = shorten_name(name2)
-    name3_short = shorten_name(name3)
+    # name3_short = shorten_name(name3)
     
-    combined_name = f"{name1_short} vs {name2_short} {name3_short}"
+    combined_name = f"{name1_short} vs {name2_short} {lang}"
     
     # 如果缩写后的名称仍然超长，进行截取
     if len(combined_name) > max_length:
-        combined_name = combined_name[:max_length]
+        combined_name = lang
     
     return combined_name
 
@@ -205,13 +263,17 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
 
 if __name__ == "__main__":
     # 示例使用
-  saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics")
-  pwcca_mean = 0.1575322875319305  # 这是一个示例值
-  saver.print_and_save("PWCCA similarity", pwcca_mean, row=1)
+  # saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics")
+  # pwcca_mean = 0.1575322875319305  # 这是一个示例值
+  # saver.print_and_save("PWCCA similarity", pwcca_mean, row=1)
 
-  pwcca_mean = 0.897656342134534
-  saver.print_and_save("PWCCA similarity", pwcca_mean, row=2)
-  saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics1")
-  # 示例添加另一个cal_method
-  cosine_sim = 0.789456123456789
-  saver.print_and_save("Cosine similarity", cosine_sim, row=1)
+  # pwcca_mean = 0.897656342134534
+  # saver.print_and_save("PWCCA similarity", pwcca_mean, row=2)
+  # saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics1")
+  # # 示例添加另一个cal_method
+  # cosine_sim = 0.789456123456789
+  # saver.print_and_save("Cosine similarity", cosine_sim, row=1)
+
+  data_file_path = "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/java/test.jsonl"
+  prompts = extract_prompts(data_file_path, mode='codeSummary_CSearchNet', prompt_prefix="Please describe the functionality of the method: ")
+  print(prompts[1])

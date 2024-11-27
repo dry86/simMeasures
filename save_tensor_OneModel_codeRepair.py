@@ -1,9 +1,9 @@
 import torch
-from getHiddenStates import load_model, tokens_get_hidden_states
-import jsonlines
 import os
 import time
 import json5
+from utils import extract_prompts
+from getHiddenStates import load_model, tokens_get_hidden_states
 
 def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
 
@@ -24,21 +24,13 @@ def main(model1_path, model_idx, padding_len, lang, device1, batch_size=1):
     accumulated_hidden_states = []
     batch_counter = 0
 
-    prompt_ = "Please fix the bug in the following code: "
-    print(f"prompt_: {prompt_}")
     batch_idx = 1
     print(f"\tbatch process start!")
     # 读取数据文件
-    # 打开文件并读取每一行内容
-    with open(data_file_path, "r") as file:
-        lines = file.readlines()
-    # 去除每行末尾的换行符
-    lines = [line.strip() for line in lines]
-
-    # 读取数据文件
-    for i, line in enumerate(lines, start = 1):
-        prompt = prompt_ + line
-        # print(f"Task {i}: {prompt}")
+    prompts = extract_prompts(data_file_path, 
+                              mode="codeRepair")
+    for task_id, prompt in prompts:
+        print(f"Task {task_id} ")
 
         inputs = tokenizer1(prompt, 
                             return_tensors='pt',

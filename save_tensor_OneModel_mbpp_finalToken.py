@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
 
     # 指定GPU设备
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:2")
 
 
     # 参数设置
@@ -102,7 +102,8 @@ if __name__ == "__main__":
     for config in configs:
         model_idx = config.get('model_idx')
         lang = config.get('lang')
-        print(f"task list: {model_idx}, {lang}")
+        padding_max_length = config.get('padding_max_length')
+        print(f"task list: {model_idx}, {lang}, {padding_max_length}")
     print("-"*50)
 
     for config in configs:
