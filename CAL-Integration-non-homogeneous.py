@@ -1,3 +1,4 @@
+import os
 import time 
 import torch
 import json5
@@ -11,7 +12,7 @@ from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_stat
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 
-PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)
@@ -136,11 +137,11 @@ def cal_RSM(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    saver.print_and_save("RSMNormDiff", calculate_rsm_norm_difference(acts1, acts2, shape), idx)
-    saver.print_and_save("RSA", calculate_rsa(acts1, acts2, shape), idx)
+    # saver.print_and_save("RSMNormDiff", calculate_rsm_norm_difference(acts1, acts2, shape), idx)
+    # saver.print_and_save("RSA", calculate_rsa(acts1, acts2, shape), idx)
     saver.print_and_save("CKA", calculate_cka(acts1, acts2, shape), idx)
-    saver.print_and_save("DisCor", calculate_distance_correlation(acts1, acts2, shape), idx)
-    saver.print_and_save("EOlapScore", calculate_eigenspace_overlap(acts1, acts2, shape), idx)
+    # saver.print_and_save("DisCor", calculate_distance_correlation(acts1, acts2, shape), idx)
+    # saver.print_and_save("EOlapScore", calculate_eigenspace_overlap(acts1, acts2, shape), idx)
     # assert K <= n  -> AssertionError
     # saver.print_and_save("Gulp", calculate_gulp(acts1, acts2, shape), idx)
 
@@ -229,8 +230,8 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     """主函数：加载模型、读取数据、计算相似性"""
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
-    pt_model_1 = model1_path + f"/pt_file/{task}/{lang}/"       # os.path.join(model1_path, "pt_file", task, lang)
-    pt_model_2 = model2_path + f"/pt_file/{task}/{lang}/"   
+    pt_model_1 = os.path.join(model1_path, "pt_file", task, lang)   # 
+    pt_model_2 = os.path.join(model2_path, "pt_file", task, lang)
     hidden_states_model1 = only_first_pt_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = only_first_pt_hidden_states(pt_model_2, model_idx2, device2)
 
@@ -260,15 +261,15 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
         # CCA
         # calculate_cca(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Alignment
-        cal_Alignment(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        # cal_Alignment(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # RSM
         cal_RSM(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Neighbors
-        cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        # cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Topology
         # cal_Topology(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Statistic
-        cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        # cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
 
 
 if __name__ == "__main__":
@@ -276,8 +277,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:2")  # 第x块GPU
-    device_model2 = torch.device("cuda:3")  # 第y块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = torch.device("cpu")  # 第x块GPU
     # device_model2 = torch.device("cpu")  # 第y块GPU
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     # device_model2 = 'cpu'
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
+    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models-starCoder2.json5'))    # M
 
     for config in configs:
         task = config.get('task')
@@ -305,9 +306,9 @@ if __name__ == "__main__":
         lang = config.get('lang')
         num_layers_to_select = config.get('num_layers_to_select')
 
-        model_pair = model_idx1 + "-" + model_idx2
+        model_pair = model_idx2 + "-" + model_idx1
         saver_name = model_pair + f"-{task}"
-        sheet_name = combine_names(model_idx1, model_idx2, lang)
+        sheet_name = combine_names(model_idx2, model_idx1, lang)
         saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
 
         # 调用主函数
