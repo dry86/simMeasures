@@ -59,13 +59,13 @@ def plot_combined_heatmaps(file_path1, sheet_name1, file_path2, sheet_name2, out
 
         # 绘制第一个热力图: 同源
         sns.heatmap(data_2n_1, vmin=0.5, vmax=1, ax=axs[0])  # 第一张子图
-        axs[0].set_title(f"Heatmap of {sheet_name1} ({file_path1.split('/')[-1]})", fontsize=14)
+        axs[0].set_title(f"Homogeneous_models ({sheet_name1})", fontsize=14)
         axs[0].set_xlabel("Layers", fontsize=12)
         axs[0].set_ylabel("Model pairs", fontsize=12)
 
         # 绘制第二个热力图: 非同源
         sns.heatmap(data_2n_2, vmin=0.5, vmax=1, ax=axs[1])  # 第二张子图
-        axs[1].set_title(f"Heatmap of {sheet_name2} ({file_path2.split('/')[-1]})", fontsize=14)
+        axs[1].set_title(f"Non_homogeneous_models ({sheet_name2})", fontsize=14)
         axs[1].set_xlabel("Layers", fontsize=12)
         axs[1].set_ylabel("Model pairs", fontsize=12)
 
