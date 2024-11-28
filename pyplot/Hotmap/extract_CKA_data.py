@@ -36,7 +36,7 @@ def extract_and_save_cka(dir_path, sheet_name, measure, output_file):
 
     # 将合并后的数据保存到输出xlsx文件
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-        combined_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        combined_df.to_excel(writer, sheet_name=f"{measure}_{sheet_name}", index=False)
 
 if __name__ == "__main__":
 

@@ -13,24 +13,30 @@ def plot_heatmap_from_xlsx(file_path, sheet_name, output_image_path):
     """
     try:
         # 从xlsx文件中读取数据
-        data = pd.read_excel(file_path, sheet_name=sheet_name, index_col=0)
+        data = pd.read_excel(file_path, sheet_name=sheet_name)
         
         # 提取每列的前n行和后n行
-        n = 10  # 替换为所需的行数
-        data_back = data.apply(lambda col: col[col.last_valid_index() - n + 1: col.last_valid_index() + 1], axis=0) # data.apply(lambda col: col.dropna().tail(n), axis=0)  # 每列的最后n个有效值
-        data = pd.concat([data.head(n), data_back]).drop_duplicates()
+        n = 10
 
-        data = data.transpose()
+        data_2n = pd.DataFrame()
+
+        # 遍历每一列，取前n行和后n行
+        for col in data.columns:
+            front_n = data[col].head(n)  # 前n行
+            back_n = data[col].dropna().tail(n)   # 后n行
+            data_2n[col] = pd.concat([front_n, back_n]).reset_index(drop=True)  # 合并前n行和后n行
+
+        data_2n = data_2n.transpose()
 
         # 创建热力图
         plt.figure(figsize=(10, 8))
-        sns.heatmap(data, cmap="YlGnBu", cbar=True, annot=False, linewidths=0.5)
+        sns.heatmap(data_2n, vmin=0.5, vmax=1)   # , linewidths=0.5
         
         # 设置标题和标签
         plt.title(f"Heatmap of {sheet_name}", fontsize=14)
-        plt.xticks(ticks=range(data.shape[1]), labels=range(0, data.shape[1]), fontsize=10)
-        plt.xlabel("Columns", fontsize=12)
-        plt.ylabel("Rows", fontsize=12)
+        plt.xticks(ticks=range(data_2n.shape[1]), labels=range(1, data_2n.shape[1]+1), fontsize=10)
+        plt.xlabel("Layers", fontsize=12)  # Columns
+        plt.ylabel("Model pairs", fontsize=12)     # Rows
         
         # 保存图像
         plt.savefig(output_image_path, format='png', dpi=300, bbox_inches='tight')
