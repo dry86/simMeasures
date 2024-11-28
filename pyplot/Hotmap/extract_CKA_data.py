@@ -41,7 +41,7 @@ def extract_and_save_cka(dir_path, sheet_name, measure, output_file):
 if __name__ == "__main__":
 
     # 示例用法
-    dir_path = "/newdisk/public/wws/simMeasures/results/final_strategy_tasks_aggre_non_homogeneous_models"  
+    dir_path = "/newdisk/public/wws/simMeasures/results/final_strategy_tasks_aggre_non_homogeneous_models"
     sheet_name = "java"  # 
     measure = "CKA"
     output_file = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/{dir_path.split('/')[-1]}_{measure}_columns_{sheet_name}.xlsx"  # 替换为目标输出文件路径
