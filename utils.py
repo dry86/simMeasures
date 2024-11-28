@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 # TodoList: 数据集的输入 构建一个Class  从类的成员函数中获取模式
 import jsonlines
 
-def extract_prompts(data_file_path, mode):
+def extract_prompts(mode, lang):
     """
     通用函数，用于从文件中提取Prompts。
 
@@ -28,18 +28,29 @@ def extract_prompts(data_file_path, mode):
     """
     # 定义模式与字段及固定前缀的映射
     mode_config = {
-        'textGen_MBPP': {'field': 'text', 'prefix': None, 'key': 'task_id'},
-        'textGen_humaneval': {'field': 'prompt', 'prefix': None, 'key': 'task_id'},
-        'codeSummary_CSearchNet': {'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo'},
-        'codeRepair': {'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None},
-        'line_completion': {'field': 'input', 'prefix': None, 'key': 'id'}
+        'textGen_MBPP': {'field': 'text', 'prefix': None, 'key': 'task_id',
+                         'path_template': "/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"},
+        'textGen_humaneval': {'field': 'prompt', 'prefix': None, 'key': 'task_id',
+                          'path_template': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl"},
+        'codeSummary_CSearchNet': {'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo',
+                        'path_template': "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl"},
+        'codeRepair': {'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None,
+                       'path_template': "/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"},
+        'line_completion': {'field': 'input', 'prefix': None, 'key': 'id',
+                        'path_template': "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/{lang}/line_completion/test.json"}
     }
     
     if mode not in mode_config:
         raise ValueError(f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}")
     
     config = mode_config[mode]
+    if '{lang}' in config['path_template']:
+        data_file_path = config['path_template'].format(lang=lang)
+    else:
+        data_file_path = config['path_template']
     prompts = []
+
+    print(f"task data_file_path: {data_file_path}")
 
     if mode == 'codeRepair':
         # 特殊处理纯文本文件

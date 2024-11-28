@@ -2,15 +2,10 @@ import torch
 import pandas as pd
 from transformers import AutoTokenizer
 from utils import extract_prompts
-# 设置打印选项来显示所有元素
-# torch.set_printoptions(threshold=torch.inf)
 
 def main(task, model1_path, model2_path, data_file_path, device1, device2):
 
     # 加载tokenizer
-    # model1, tokenizer1 = load_model(model1_path, device1)
-    # model2, tokenizer2 = load_model(model2_path, device2)
-    
     tokenizer1 = AutoTokenizer.from_pretrained(model1_path)
     tokenizer2 = AutoTokenizer.from_pretrained(model2_path)
 
@@ -23,10 +18,9 @@ def main(task, model1_path, model2_path, data_file_path, device1, device2):
     token1 = []
     token2 = []
     # 读取数据文件
-    prompts = extract_prompts(data_file_path, 
-                              mode=task)
+    prompts = extract_prompts(task, "python")
     for task_id, prompt in prompts:
-        print(f"Task ID: {task_id}")
+        # print(f"Task ID: {task_id}")
 
         inputs_model1 = tokenizer1(prompt, return_tensors='pt').to(device1)
         token1.append(inputs_model1['input_ids'].cpu().numpy())
@@ -36,6 +30,10 @@ def main(task, model1_path, model2_path, data_file_path, device1, device2):
     lengths1 = [len(seq[0]) for seq in token1]
     stats = pd.DataFrame(lengths1, columns=['length']).describe(percentiles=[0.9,0.95])
     print(stats)
+    # 获取90%的分位数并四舍五入
+    percentile_90_1 = round(stats.loc['90%', 'length'])
+    print(f"90% percentile for model1: {percentile_90_1}")
+
     lengths2 = [len(seq[0]) for seq in token2]
     stats = pd.DataFrame(lengths2, columns=['length']).describe(percentiles=[0.9,0.95])
     print(stats)
@@ -51,11 +49,11 @@ if __name__ == "__main__":
     device_model2 = torch.device("cuda:1")
 
     # 模型和数据路径
-    model_1 = "/newdisk/public/wws/model_dir/codeShell/codeShell-7b"
-    model_2 = "/newdisk/public/wws/model_dir/StarCoder2/starcoder2-7b"
+    model_1 = "/newdisk/public/wws/model_dir/StarCoder2/starcoder2-7b"
+    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
     
-    data_file = "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/javaCorpus/line_completion/test.json"
-    task = "line_completion"
+    data_file = "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/python/test.jsonl"
+    task = "codeSummary_CSearchNet"
     # 调用主函数
     main(task, model_1, model_2, data_file, device_model1, device_model2)
     
