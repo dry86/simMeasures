@@ -4,7 +4,6 @@ import torch
 import json5
 import numpy as np
 from tqdm import tqdm
-from transformers import AutoTokenizer
 from example import cca_core
 from utils import ResultSaver, combine_names
 from functools import wraps
@@ -277,7 +276,7 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model1 = torch.device("cuda:2")  # 第x块GPU
     device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = torch.device("cpu")  # 第x块GPU
@@ -287,39 +286,43 @@ if __name__ == "__main__":
     # device_model2 = 'cpu'
 
     # 参数设置
-    configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models-starCoder2.json5'))    # M
+    configs = json5.load(open(
+        '/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
 
     for config in configs:
         task = config.get('task')
-        model_idx1 = config.get('model_idx1')
-        model_idx2 = config.get('model_idx2')
+        prefix_model_path_idx1_list = config.get('prefix_model_path_idx1')
+        prefix_model_path_idx2 = config.get('prefix_model_path_idx2')
         lang = config.get('lang')
-        print(task, model_idx1, model_idx2, lang)
+        print(task, prefix_model_path_idx2, prefix_model_path_idx1_list, lang)
     print("-"*50)
 
     for config in configs:
-        task = config.get('task')
-        prefix_model_path_idx1 = config.get('prefix_model_path_idx1')
+        tasks = config.get('task')
+        prefix_model_path_idx1_list = config.get('prefix_model_path_idx1')
         prefix_model_path_idx2 = config.get('prefix_model_path_idx2')
-        model_idx1 = config.get('model_idx1')
-        model_idx2 = config.get('model_idx2')
         lang = config.get('lang')
         num_layers_to_select = config.get('num_layers_to_select')
 
-        model_pair = model_idx2 + "-" + model_idx1
-        saver_name = model_pair + f"-{task}"
-        sheet_name = combine_names(model_idx2, model_idx1, lang)
-        saver = ResultSaver(file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models/{model_pair}/{saver_name}.xlsx", sheet=sheet_name)
+        for prefix_model_path_idx1 in prefix_model_path_idx1_list:
+            for task in tasks:
+                model_idx1 = os.path.basename(prefix_model_path_idx1)
+                model_idx2 = os.path.basename(prefix_model_path_idx2)
 
-        # 调用主函数
-        model_1 = prefix_model_path_idx1 + model_idx1
-        model_2 = prefix_model_path_idx2 + model_idx2
-        print(f"Current work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
-        main(task, num_layers_to_select, model_1, model_2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
-        print(f"Finish work: {task}, Model: {model_idx1}, {model_idx2}, lang: {lang}")
-        print("-"*50)
-        print("-"*50)
-        print("-"*50)
+                model_pair = model_idx2 + "-" + model_idx1
+                saver_name = model_pair + f"-{task}"
+                sheet_name = lang
+                saver = ResultSaver(
+                    file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_CKA/{model_pair}/{saver_name}.xlsx", 
+                    sheet=sheet_name)
+
+                # 调用主函数
+                print(f"Current work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
+                main(task, num_layers_to_select, prefix_model_path_idx1, prefix_model_path_idx2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
+                print(f"Finish work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
+                print("-"*50)
+                print("-"*50)
+                print("-"*50)
 
 
         # 记录结束时间

@@ -7,10 +7,10 @@ from transformers import AutoTokenizer
 from utils import extract_prompts
 from getHiddenStates import load_model, tokens_get_hidden_states
 
-def get_padding_length_and_prompt(task, model1_path, lang, device):
+def get_padding_length_and_prompt(task, tokenizer1, lang, device):
 
     # 加载tokenizer
-    tokenizer1 = AutoTokenizer.from_pretrained(model1_path)
+    # tokenizer1 = AutoTokenizer.from_pretrained(model1_path)
 
     # 使用 eos_token 作为 pad_token
     tokenizer1.pad_token = tokenizer1.eos_token
@@ -27,17 +27,17 @@ def get_padding_length_and_prompt(task, model1_path, lang, device):
 
     lengths1 = [len(seq[0]) for seq in token1]
     stats = pd.DataFrame(lengths1, columns=['length']).describe(percentiles=[0.9,0.95])
-    print(stats)
+    # print(stats)
 
     # 获取90%的分位数并四舍五入
     percentile_90 = round(stats.loc['90%', 'length'])
     print(f"90% percentile for model1: {percentile_90}")
     return percentile_90, prompts
 
-def main(task, model1_path, model_idx, padding_len, prompts, lang, device1, batch_size=1):
+def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1, batch_size=1):
 
     # 加载模型和tokenizer
-    model, tokenizer1 = load_model(model1_path, device1)
+    # model, tokenizer1 = load_model(model1_path, device1)
 
     # 使用 eos_token 作为 pad_token
     tokenizer1.pad_token = tokenizer1.eos_token
@@ -90,6 +90,8 @@ def main(task, model1_path, model_idx, padding_len, prompts, lang, device1, batc
             # 清空累积列表和计数器
             accumulated_hidden_states.clear()
             batch_counter = 0
+
+            break # only first 1k
         
         del hidden_states, last_token_hidden_states
         torch.cuda.empty_cache()
@@ -116,24 +118,29 @@ if __name__ == "__main__":
 
     for config in configs:
         task = config.get('task')
-        model_idx = config.get('model_idx')
+        model_path = config.get('model_path')
+        model_idx = os.path.basename(model_path)
         lang = config.get('lang')
 
         print(f"task list: {task}, {model_idx}, {lang}")
-    print("-"*50)
+    print("-"*100)
 
     for config in configs:
-        task = config.get('task')
+        tasks = config.get('task')
         model_path = config.get('model_path')
-        model_idx = config.get('model_idx')
+        model_idx = os.path.basename(model_path)
         lang = config.get('lang')
 
-        # 调用主函数
-        print(f"Current work: {model_idx}")
-
-        padding_length, prompts = get_padding_length_and_prompt(task, model_path, lang, device_model)
-        main(task, model_path, model_idx, padding_length, prompts, lang, device_model)
+        model, tokenizer1 = load_model(model_path, device_model)
+        for task in tasks:
+            print(f"Current work: {model_idx}, {task}, {lang}")
+            
+            padding_length, prompts = get_padding_length_and_prompt(task, tokenizer1, lang, device_model)
+            main(task, model, tokenizer1, model_idx, padding_length, prompts, lang, device_model)
         
+        del model, tokenizer1
+        torch.cuda.empty_cache()
+
         # 记录结束时间
         end_time = time.time()
         # 计算并打印程序运行时间
