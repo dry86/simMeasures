@@ -20,7 +20,7 @@ def get_batch_number(filename, keyword):
 def only_first_pt_hidden_states(directory, keyword, device):
     """加载第一块.pt文件的隐藏状态张量"""
     # 找到以“1.pt”结尾的文件
-    pt_files = [filename for filename in os.listdir(directory) if filename.startswith(keyword) and filename.endswith('1.pt')]
+    pt_files = [filename for filename in os.listdir(directory) if filename.startswith(keyword) and filename.endswith('_1.pt')]
     # 检查并加载
     if len(pt_files) > 0:
         file_path = os.path.join(directory, pt_files[0])
@@ -30,7 +30,7 @@ def only_first_pt_hidden_states(directory, keyword, device):
         print(f"Loaded file: {file_path}")
         return hidden_states
     else:
-        print("No file ending with '1.pt' found in the directory.")
+        print("No file ending with '_1.pt' found in the directory.")
     return 0
 
 def concatenate_hidden_states(directory, keyword, device):
