@@ -58,13 +58,13 @@ def plot_combined_heatmaps(file_path1, sheet_name1, file_path2, sheet_name2, out
         fig, axs = plt.subplots(2, 1, figsize=(10, 10))
 
         # 绘制第一个热力图: 同源
-        sns.heatmap(data_2n_1, cmap="YlGnBu", vmin=0.5, vmax=1, ax=axs[0])  # 第一张子图
+        sns.heatmap(data_2n_1, cmap="YlGnBu",  ax=axs[0])  # 第一张子图 vmin=0.5, vmax=1,
         axs[0].set_title(f"Homogeneous_models ({sheet_name1})", fontsize=14)
         axs[0].set_xlabel("Layers", fontsize=12)
         axs[0].set_ylabel("Model pairs", fontsize=12)
 
         # 绘制第二个热力图: 非同源
-        sns.heatmap(data_2n_2, cmap="YlGnBu", vmin=0.5, vmax=1, ax=axs[1])  # 第二张子图
+        sns.heatmap(data_2n_2, cmap="YlGnBu",  ax=axs[1])  # 第二张子图 vmin=0.5, vmax=1,
         axs[1].set_title(f"Non_homogeneous_models ({sheet_name2})", fontsize=14)
         axs[1].set_xlabel("Layers", fontsize=12)
         axs[1].set_ylabel("Model pairs", fontsize=12)
@@ -81,10 +81,11 @@ def plot_combined_heatmaps(file_path1, sheet_name1, file_path2, sheet_name2, out
 if __name__ == "__main__":
 
     # 示例用法
-    file_path1 = "/newdisk/public/wws/simMeasures/pyplot/Hotmap/final_strategy_tasks_aggre_CKA_columns_java.xlsx"
-    sheet_name1 = "CKA_java"
-    file_path2 = "/newdisk/public/wws/simMeasures/pyplot/Hotmap/final_strategy_tasks_aggre_non_homogeneous_models_CKA_columns_java.xlsx"
-    sheet_name2 = "CKA_java"
-    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/combined_heatmap.png"
+    lang = "java"
+    file_path1 = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/final_strategy_tasks_aggre_CKA_columns_{lang}.xlsx"
+    sheet_name1 = f"CKA_{lang}"
+    file_path2 = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/final_strategy_tasks_aggre_non_homogeneous_models_CKA_columns_{lang}.xlsx"
+    sheet_name2 = f"CKA_{lang}"
+    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/{sheet_name1}_combined_heatmap.png"
 
     plot_combined_heatmaps(file_path1, sheet_name1, file_path2, sheet_name2, output_image_path)

@@ -62,11 +62,15 @@ def process_all_subdirs(base_dir, output_dir, tasks):
 if __name__ == "__main__":
 
     # 任务名列表
-    # tasks = ["humaneval_finalToken", "mbpp_finalToken", "lineCompletion", "codeSummary-CSearchNet", "codeRepair"]
+    # tasks = ["humaneval_finalToken", "mbpp_finalToken", "lineCompletion", "codeSummary-CSearchNet", "codeRepair"] # homogeneous_models
     tasks = ["textGen_humaneval", "textGen_MBPP", "line_completion", "codeSummary_CSearchNet", "codeRepair"] # non_homogeneous_models
 
     # 设置输入文件夹路径和输出文件夹路径
-    base_dir = '/newdisk/public/wws/simMeasures/results/final_strategy_non_homo_models_starcoder2'  # base目录，包含多个subdir_path
+    # base_dir = '/newdisk/public/wws/simMeasures/results/final_strategy_magicoder'  # base目录，包含多个subdir_path
+    # output_dir = '/newdisk/public/wws/simMeasures/results/final_strategy_tasks_aggre'  # 输出目录
+
+
+    base_dir = '/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_CKA'  # base目录，包含多个subdir_path
     output_dir = '/newdisk/public/wws/simMeasures/results/final_strategy_tasks_aggre_non_homogeneous_models'  # 输出目录
 
     # 调用函数处理所有子文件夹
