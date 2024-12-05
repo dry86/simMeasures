@@ -120,23 +120,24 @@ if __name__ == "__main__":
         task = config.get('task')
         model_path = config.get('model_path')
         model_idx = os.path.basename(model_path)
-        lang = config.get('lang')
+        langs = config.get('lang')
 
-        print(f"task list: {task}, {model_idx}, {lang}")
+        print(f"task list: {task}, {model_idx}, {langs}")
     print("-"*100)
 
     for config in configs:
         tasks = config.get('task')
         model_path = config.get('model_path')
         model_idx = os.path.basename(model_path)
-        lang = config.get('lang')
+        langs = config.get('lang')
 
         model, tokenizer1 = load_model(model_path, device_model)
         for task in tasks:
-            print(f"Current work: {model_idx}, {task}, {lang}")
-            
-            padding_length, prompts = get_padding_length_and_prompt(task, tokenizer1, lang, device_model)
-            main(task, model, tokenizer1, model_idx, padding_length, prompts, lang, device_model)
+            for lang in langs:
+                print(f"Current work: {model_idx}, {task}, {lang}")
+                
+                padding_length, prompts = get_padding_length_and_prompt(task, tokenizer1, lang, device_model)
+                main(task, model, tokenizer1, model_idx, padding_length, prompts, lang, device_model)
         
         del model, tokenizer1
         torch.cuda.empty_cache()
