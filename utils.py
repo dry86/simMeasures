@@ -1,7 +1,6 @@
 import os
 import torch
 import pandas as pd
-import jsonlines
 import collections
 import math
 from openpyxl import load_workbook
@@ -11,66 +10,116 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import jsonlines
 
 def extract_prompts(mode, lang):
-    """
-    通用函数，用于从文件中提取Prompts。
+  """
+  通用函数，用于从文件中提取Prompts。
 
-    参数:
-        data_file_path (str): 数据文件的路径。
-        mode (str): 解析模式，可选值：
-            - 'textGen_MBPP': 提取'text'字段。
-            - 'textGen_humaneval': 提取'prompt'字段。
-            - 'codeSummary_CSearchNet': 提取'code'字段，并添加固定前缀。
-            - 'codeRepair': 从纯文本文件逐行读取，并添加固定前缀。
-            - 'line_completion': 提取'input'字段。
-    
-    返回:
-        list: 提取的Prompt列表。
-    """
-    # 定义模式与字段及固定前缀的映射
-    mode_config = {
-        'textGen_MBPP': {'field': 'text', 'prefix': None, 'key': 'task_id',
-                         'path_template': "/newdisk/public/wws/Dataset/mbpp/mbpp.jsonl"},
-        'textGen_humaneval': {'field': 'prompt', 'prefix': None, 'key': 'task_id',
-                          'path_template': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl"},
-        'codeSummary_CSearchNet': {'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo',
-                        'path_template': "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl"},
-        'codeRepair': {'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None,
-                       'path_template': "/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"},
-        'line_completion': {'field': 'input', 'prefix': None, 'key': 'id',
-                        'path_template': "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/{lang}/line_completion/test.json"}
+  参数:
+      data_file_path (str): 数据文件的路径。
+      mode (str): 解析模式，可选值：
+          - 'textGen_MBPP': 提取'text'字段。
+          - 'textGen_humaneval': 提取'prompt'字段。
+          - 'codeSummary_CSearchNet': 提取'code'字段，并添加固定前缀。
+          - 'codeRepair': 从纯文本文件逐行读取，并添加固定前缀。
+          - 'line_completion': 提取'input'字段。
+  
+  返回:
+      list: 提取的Prompt列表。
+  """
+  # 定义模式与字段及固定前缀的映射
+  mode_config = {
+    'textGen_MBPP': {
+        'key': 'task_id',
+        'path_template': [
+            {
+                'path': "/newdisk/public/wws/Dataset/mbpp/{lang}/mbpp.jsonl",
+                'field': 'text',
+                'prefix': None
+            },
+            {
+                'path': "/newdisk/public/wws/Dataset/mbpp/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
+                'field': 'prompt',
+                'prefix': None
+            }
+        ]
+    },
+    'textGen_humaneval': {
+        'key': 'task_id',
+        'path_template': [
+            {
+                'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl",
+                'field': 'prompt',
+                'prefix': None
+            },
+            {
+                'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
+                'field': 'prompt',
+                'prefix': None
+            }
+        ]
+    },
+    'codeSummary_CSearchNet': {
+        'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo',
+        'path_template': ["/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl"]
+    },
+    'codeRepair': {
+        'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None,
+        'path_template': ["/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"]
+    },
+    'line_completion': {
+        'field': 'input', 'prefix': None, 'key': 'id',
+        'path_template': ["/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/{lang}/line_completion/test.json"]
     }
-    
-    if mode not in mode_config:
-        raise ValueError(f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}")
-    
-    config = mode_config[mode]
-    if '{lang}' in config['path_template']:
-        data_file_path = config['path_template'].format(lang=lang)
-    else:
-        data_file_path = config['path_template']
-    prompts = []
+  }
+  
+  if mode not in mode_config:
+      raise ValueError(f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}")
+  
+  config = mode_config[mode]
+  prompts = []
 
-    print(f"task data_file_path: {data_file_path}")
+  for path_config in config['path_template']:
+    data_file_path = path_config['path'].format(lang=lang) if isinstance(path_config, dict) else path_config.format(lang=lang)
 
-    if mode == 'codeRepair':
+    if not os.path.exists(data_file_path):
+      print("Not this file format")
+      continue
+      # raise FileNotFoundError(f"The file does not exist: {data_file_path}")
+
+    print(f"Processing file: {data_file_path}")
+
+    if data_file_path.endswith('.jsonl'):
+        # 使用当前路径的 field 和 prefix 配置
+        field = path_config['field']
+        prefix = path_config['prefix'] or ""
+        import jsonlines
+        with jsonlines.open(data_file_path) as reader:
+            for obj in reader:
+                task_id = obj.get(config['key']) if config['key'] else None
+                content = obj.get(field, "")
+                prompt = prefix + content
+                prompts.append((task_id, prompt))
+    elif data_file_path.endswith('.parquet'):
+        # 使用当前路径的 field 和 prefix 配置
+        field = path_config['field']
+        prefix = path_config['prefix'] or ""
+        import pandas as pd
+        df = pd.read_parquet(data_file_path)
+        for idx, row in df.iterrows():
+            task_id = row.get(config['key']) if config['key'] else None
+            content = row.get(field, "")
+            prompt = prefix + content
+            prompts.append((task_id, prompt))
+    elif mode == 'codeRepair':
         # 特殊处理纯文本文件
         with open(data_file_path, "r") as file:
             lines = file.readlines()
         lines = [line.strip() for line in lines]
         
         for i, line in enumerate(lines, start=1):
-            prompt = config['prefix'] + line
+            prompt = path_config['prefix'] + line
             prompts.append((i, prompt))
-    else:
-        # 通用处理jsonlines文件
-        with jsonlines.open(data_file_path) as reader:
-            for obj in reader:
-                task_id = obj.get(config['key']) if config['key'] else None
-                content = obj.get(config['field'], "")
-                prompt = (config['prefix'] or "") + content
-                prompts.append((task_id, prompt))
     
-    return prompts
+  return prompts
 
 
 # TodoList: analysis_max_token

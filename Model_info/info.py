@@ -109,7 +109,7 @@ def save_model_parameters_to_file(model, file_path):
 
 if __name__ == "__main__":
 
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:1")
 
     model_list = ["/newdisk/public/wws/model_dir/codellama/codeLlama-7b",
                   "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct",
@@ -119,7 +119,7 @@ if __name__ == "__main__":
                   "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B"]
     
     for model_path in model_list:
-        model_path = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct"
+        model_path = "/newdisk/public/wws/model_dir/MagiCoder/magicoder-CL-7b"
         print(f"model_path: {model_path}")
         model = load_model(model_path, device_model)
 

@@ -111,7 +111,7 @@ if __name__ == "__main__":
     start_time = time.time()  
 
     # 指定GPU设备
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:1")
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-tasks.json5'))
