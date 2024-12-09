@@ -86,6 +86,6 @@ if __name__ == "__main__":
     sheet_name1 = f"CKA_{lang}"
     file_path2 = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/final_strategy_tasks_aggre_non_homogeneous_models_CKA_columns_{lang}.xlsx"
     sheet_name2 = f"CKA_{lang}"
-    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/{sheet_name1}_combined_heatmap.png"
+    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/Models/{sheet_name1}_combined_heatmap.png"
 
     plot_combined_heatmaps(file_path1, sheet_name1, file_path2, sheet_name2, output_image_path)
