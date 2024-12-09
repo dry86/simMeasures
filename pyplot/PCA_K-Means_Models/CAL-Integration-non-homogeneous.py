@@ -44,7 +44,7 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     # cluster_assignments = kmeans.fit_predict(X_2d)
 
     # 可视化
-    colors = ['blue' if l == 'Model_1' else 'red' for l in labels]
+    colors = ['white' if l == 'Model_1' else 'red' for l in labels]
 
     plt.figure(figsize=(8,6))
     plt.scatter(X_2d[:, 0], X_2d[:, 1], c=colors, alpha=0.7)
@@ -52,7 +52,7 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     plt.xlabel('PC1')
     plt.ylabel('PC2')
 
-    plt.savefig(f"simMeasures/pyplot/PCA_K-Means_Models/0Layer_PCA_{model_idx1}_{model_idx2}_{task}_{lang}.png", format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(f"simMeasures/pyplot/PCA_K-Means_Models/0Layer_PCA_{model_idx1}_{model_idx2}_{task}_{lang}1.png", format='png', dpi=300, bbox_inches='tight')
     plt.show()
 
 

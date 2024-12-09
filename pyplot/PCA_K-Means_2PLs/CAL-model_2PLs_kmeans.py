@@ -10,7 +10,20 @@ from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_stat
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
+
+# 函数：计算协方差矩阵的椭圆参数
+def get_ellipse_params(points):
+    cov = np.cov(points, rowvar=False)  # 计算协方差矩阵
+    eigenvalues, eigenvectors = np.linalg.eigh(cov)  # 特征值和特征向量
+    # 按特征值大小排序
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[order]
+    eigenvectors = eigenvectors[:, order]
+    angle = np.degrees(np.arctan2(*eigenvectors[:, 0][::-1]))  # 计算旋转角度
+    width, height = 2 * np.sqrt(eigenvalues)  # 椭圆轴长为特征值的平方根的2倍
+    return width, height, angle
 
 
 def main(task, num_layers_to_select, model1_path, model_idx1, lang1, lang2, device1, device2):
@@ -38,21 +51,57 @@ def main(task, num_layers_to_select, model1_path, model_idx1, lang1, lang2, devi
     pca = PCA(n_components=2)
     X_2d = pca.fit_transform(X)
 
-    # # K-Means聚类
-    # kmeans = KMeans(n_clusters=2, random_state=42)
-    # cluster_assignments = kmeans.fit_predict(X_2d)
+    # K-Means聚类
+    kmeans = KMeans(n_clusters=2, random_state=42)
+    cluster_assignments = kmeans.fit_predict(X_2d)
 
-    # 可视化
-    colors = ['blue' if l == 'Python' else 'red' for l in labels]
+    cluster_centers = kmeans.cluster_centers_
 
-    plt.figure(figsize=(8,6))
-    plt.scatter(X_2d[:, 0], X_2d[:, 1], c=colors, alpha=0.7)
-    plt.title('Python vs Java Embedding Space')
-    plt.xlabel('PC1')
-    plt.ylabel('PC2')
+    # 不同聚类的颜色
+    colors = ['tab:orange', 'tab:blue']
+    # 绘制聚类结果
+    plt.figure(figsize=(8, 6))
 
-    plt.savefig(f"simMeasures/pyplot/PCA_K-Means/1pca_{model_idx1}_{task}_{lang2}_{lang1}.png", format='png', dpi=300, bbox_inches='tight')
+    for cluster_id in range(2):  # 对每个聚类绘制散点图和椭圆
+        cluster_points = X_2d[cluster_assignments == cluster_id]
+        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], 
+                    c=colors[cluster_id], label=f'Cluster {cluster_id}', alpha=0.6)
+        
+        # 计算椭圆参数
+        width, height, angle = get_ellipse_params(cluster_points)
+        center = cluster_points.mean(axis=0)
+        
+        # 绘制椭圆
+        ellipse = Ellipse(xy=center, width=width, height=height, angle=angle, 
+                        edgecolor='tab:green', facecolor='none', linewidth=2)
+        plt.gca().add_patch(ellipse)
+
+    # 绘制聚类中心
+    plt.scatter(cluster_centers[:, 0], cluster_centers[:, 1], 
+                c='black', s=150, marker='o', label='Centroids')
+
+    # 添加标题、标签和图例
+    plt.title("K-Means Clustering Visualization")
+    plt.xlabel("Feature 1 (PC1 or Dim 1)")
+    plt.ylabel("Feature 2 (PC2 or Dim 2)")
+    plt.legend()
+    # plt.grid(True)
+    plt.savefig(f"simMeasures/pyplot/PCA_K-Means_2PLs/pcaKmeans_{model_idx1}_{task}_{lang2}_{lang1}.png", format='png', dpi=300, bbox_inches='tight')
     plt.show()
+
+
+
+    # # 可视化
+    # colors = ['tab:blue' if l == 'Python' else 'tab:orange' for l in labels]
+
+    # plt.figure(figsize=(8,6))
+    # plt.scatter(X_2d[:, 0], X_2d[:, 1], c=colors, alpha=0.6)
+    # plt.title('Python vs Java Embedding Space')
+    # plt.xlabel('PC1')
+    # plt.ylabel('PC2')
+
+    # plt.savefig(f"simMeasures/pyplot/PCA_K-Means_2PLs/1pca_{model_idx1}_{task}_{lang2}_{lang1}.png", format='png', dpi=300, bbox_inches='tight')
+    # plt.show()
 
 if __name__ == "__main__":
 
@@ -67,7 +116,7 @@ if __name__ == "__main__":
 
     # 参数设置
     configs = json5.load(open(
-        '/newdisk/public/wws/simMeasures/config/config-PCA_KMeans.json5'))    # M
+        '/newdisk/public/wws/simMeasures/config/config-PCA_KMeans-2PLs.json5'))    # M
 
     for config in configs:
         task = config.get('task')
