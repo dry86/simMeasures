@@ -52,7 +52,7 @@ def plot_combined_heatmaps(file_path1, sheet_name1, output_image_path):
             return
 
         # 创建一个图
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(8, 16))
 
         # 绘制热力图
         sns.heatmap(data_2n_1, cmap="YlGnBu")  # vmin=0.5, vmax=1, 可根据需要调整
@@ -73,11 +73,11 @@ def plot_combined_heatmaps(file_path1, sheet_name1, output_image_path):
 if __name__ == "__main__":
 
     # 示例用法
-    model_idx = "dsc-6.7b-base"  # "Qwen2.5-Coder-7B"
+    model_idx = "starcoder2-7b" # "codeLlama-7b"  # "Qwen2.5-Coder-7B"
     # model_idx = "Qwen2.5-Coder-7B"
-    sheet_name1 = "textGen_MBPP"
+    sheet_name1 = "textGen_humaneval"
 
-    file_path1 = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/Languages/xlsx/{model_idx}.xlsx"
-    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/Languages/png/{model_idx}_{sheet_name1}_MPLs_heatmap.png"
+    file_path1 = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/Languages/xlsx/{model_idx}-MPLs.xlsx"
+    output_image_path = f"/newdisk/public/wws/simMeasures/pyplot/Hotmap/Languages/png/MPLs-{model_idx}_{sheet_name1}_Hotmap.png"
 
     plot_combined_heatmaps(file_path1, sheet_name1, output_image_path)
