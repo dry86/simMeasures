@@ -85,6 +85,28 @@ def is_multi_token(tokenizer, text: str):
     else:
         return False
 
+def is_multi_token_double(tokenizer1, tokenizer2, text: str):
+    """
+    判断给定的文本是否由多个 token id 组成。
+    
+    Args:
+    - tokenizer: 使用的分词器。
+    - text: 需要检查的文本。
+    
+    Returns:
+    - bool: 如果文本由多个 token 组成，则返回 True；否则返回 False。
+    - token_id: 对应的 token id。
+    """
+    # 获取token_ids
+    token_id1 = tokenizer1.convert_tokens_to_ids(text)
+    token_id2 = tokenizer2.convert_tokens_to_ids(text)
+
+    # 如果 token_id == 0，说明该文本不在词汇表中
+    if token_id1 == 0 or token_id2 == 0:
+        return True
+    else:
+        return False
+
 # 定义生成文本函数
 def generate_outputs(model, tokenizer, prompt: str, device: torch.device, max_new_tokens: int = 6):
     """
@@ -130,7 +152,7 @@ def generate_outputs(model, tokenizer, prompt: str, device: torch.device, max_ne
         gen_text = gen_text.split()[0]
     except IndexError:
         gen_text = gen_text
-    if is_multi_token(tokenizer, gen_text):
+    if is_multi_token(tokenizer, gen_text) or gen_text == '':
         print(f"\t gen_text is multi_token or blank, not in vocab: '{gen_text}'")
         return -1, -1, -1, -1
     
@@ -288,7 +310,7 @@ def main(model_1, model_2, file_path, device1, device2):
             for idx, (masked_code, ground_label) in enumerate(zip(masked_results, ground_labels), 1):
                 print(f"Masked Version {idx}:")
 
-                if is_multi_token(tokenizer1, ground_label):
+                if is_multi_token_double(tokenizer1, tokenizer2, ground_label):
                     print(f"\t ground_label is multi_token: '{ground_label}'")
                     continue
                 
@@ -311,12 +333,12 @@ def main(model_1, model_2, file_path, device1, device2):
                 count_qErr = count_qErr + cal_mDis(gen_text1, ground_label)
                 count_qErr_prime = count_qErr_prime + cal_mDis(gen_text2, ground_label)
         
-                count_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits + cal_norm_of_soft_prediction_diff(logits1, logits2)
-                count_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob + cal_norm_of_soft_prediction_diff(prob1, prob2)
-                count_schrun = count_schrun + cal_surrogate_churn(prob1, prob2)
-                count_jsd = count_jsd + cal_jensen_shannon_divergence(prob1, prob2)
-                prob = torch.stack((prob1, prob2), dim=0)
-                count_pd = count_pd + cal_prediction_difference_torch(prob)
+                # count_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits + cal_norm_of_soft_prediction_diff(logits1, logits2)
+                # count_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob + cal_norm_of_soft_prediction_diff(prob1, prob2)
+                # count_schrun = count_schrun + cal_surrogate_churn(prob1, prob2)
+                # count_jsd = count_jsd + cal_jensen_shannon_divergence(prob1, prob2)
+                # prob = torch.stack((prob1, prob2), dim=0)
+                # count_pd = count_pd + cal_prediction_difference_torch(prob)
 
                 count_N_sample = count_N_sample + 1
 
@@ -339,17 +361,17 @@ def main(model_1, model_2, file_path, device1, device2):
     print(f"\t m_ErrCorrDis2: {m_ErrCorrDis2}")
     print(f"\t m_MinMaxNorm_Dis: {m_MinMaxNorm_Dis}")
 
-    m_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits / (2 * count_N_sample)
-    m_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob / (2 * count_N_sample)
-    m_SChrun = count_schrun / (2 * count_N_sample)
-    m_JSD = count_jsd / (2 * count_N_sample)
-    m_PD = count_pd / count_N_sample
+    # m_NormSoftPredDiff_logits = count_NormSoftPredDiff_logits / (2 * count_N_sample)
+    # m_NormSoftPredDiff_prob = count_NormSoftPredDiff_prob / (2 * count_N_sample)
+    # m_SChrun = count_schrun / (2 * count_N_sample)
+    # m_JSD = count_jsd / (2 * count_N_sample)
+    # m_PD = count_pd / count_N_sample
             
-    print(f"\t m_NormSoftPredDiff_logits: {m_NormSoftPredDiff_logits}")
-    print(f"\t m_NormSoftPredDiff_prob: {m_NormSoftPredDiff_prob}")
-    print(f"\t m_SChrun: {m_SChrun}")
-    print(f"\t m_JSD: {m_JSD}")
-    print(f"\t m_PD: {m_PD}")
+    # print(f"\t m_NormSoftPredDiff_logits: {m_NormSoftPredDiff_logits}")
+    # print(f"\t m_NormSoftPredDiff_prob: {m_NormSoftPredDiff_prob}")
+    # print(f"\t m_SChrun: {m_SChrun}")
+    # print(f"\t m_JSD: {m_JSD}")
+    # print(f"\t m_PD: {m_PD}")
     print(f"\t N: {count_N_sample}")
 
 if __name__ == "__main__":
@@ -362,8 +384,8 @@ if __name__ == "__main__":
     # device_model2 = 'cpu'
 
     # 设置模型和输入
-    model_1 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b"
-    model_2 = "/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Instruct" 
+    model_1 = "/newdisk/public/wws/model_dir/deepseek-coder/dsc-7b-base-v1.5"
+    model_2 = "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-7B" 
 
     # Dataset
     file_path = '/newdisk/public/wws/Dataset/humaneval-x-main/data/python/data/humaneval.jsonl'
