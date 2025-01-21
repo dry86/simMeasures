@@ -8,6 +8,7 @@ __pycache__/
 # /pyplot/
 # !/pyplot/
 # !/pyplot/**/*.py
+/human_eval/*.jsonl
 
 # C extensions
 *.so

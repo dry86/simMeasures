@@ -3,123 +3,227 @@ import torch
 import pandas as pd
 import collections
 import math
+from typing import List, Tuple, Optional, Dict, Any
 from openpyxl import load_workbook
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # TodoList: 数据集的输入 构建一个Class  从类的成员函数中获取模式
-import jsonlines
 
-def extract_prompts(mode, lang):
-  """
-  通用函数，用于从文件中提取Prompts。
-
-  参数:
-      data_file_path (str): 数据文件的路径。
-      mode (str): 解析模式，可选值：
-          - 'textGen_MBPP': 提取'text'字段。
-          - 'textGen_humaneval': 提取'prompt'字段。
-          - 'codeSummary_CSearchNet': 提取'code'字段，并添加固定前缀。
-          - 'codeRepair': 从纯文本文件逐行读取，并添加固定前缀。
-          - 'line_completion': 提取'input'字段。
-  
-  返回:
-      list: 提取的Prompt列表。
-  """
-  # 定义模式与字段及固定前缀的映射
-  mode_config = {
-    'textGen_MBPP': {
-        'key': 'task_id',
-        'path_template': [
-            {
-                'path': "/newdisk/public/wws/Dataset/mbpp/{lang}/mbpp.jsonl",
-                'field': 'text',
-                'prefix': None
-            },
-            {
-                'path': "/newdisk/public/wws/Dataset/mbpp/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
-                'field': 'prompt',
-                'prefix': None
-            }
-        ]
-    },
-    'textGen_humaneval': {
-        'key': 'task_id',
-        'path_template': [
-            {
-                'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl",
-                'field': 'prompt',
-                'prefix': None
-            },
-            {
-                'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
-                'field': 'prompt',
-                'prefix': None
-            }
-        ]
-    },
-    'codeSummary_CSearchNet': {
-        'field': 'code', 'prefix': "Please describe the functionality of the method: ", 'key': 'repo',
-        'path_template': ["/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl"]
-    },
-    'codeRepair': {
-        'field': None, 'prefix': "Please fix the bug in the following code: ", 'key': None,
-        'path_template': ["/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy"]
-    },
-    'line_completion': {
-        'field': 'input', 'prefix': None, 'key': 'id',
-        'path_template': ["/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/{lang}/line_completion/test.json"]
-    }
-  }
-  
-  if mode not in mode_config:
-      raise ValueError(f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}")
-  
-  config = mode_config[mode]
-  prompts = []
-
-  for path_config in config['path_template']:
-    data_file_path = path_config['path'].format(lang=lang) if isinstance(path_config, dict) else path_config.format(lang=lang)
-
-    if not os.path.exists(data_file_path):
-      print("Not this file format")
-      continue
-      # raise FileNotFoundError(f"The file does not exist: {data_file_path}")
-
-    print(f"Processing file: {data_file_path}")
-
-    if data_file_path.endswith('.jsonl'):
-        # 使用当前路径的 field 和 prefix 配置
-        field = path_config['field']
-        prefix = path_config['prefix'] or ""
-        import jsonlines
-        with jsonlines.open(data_file_path) as reader:
-            for obj in reader:
-                task_id = obj.get(config['key']) if config['key'] else None
-                content = obj.get(field, "")
-                prompt = prefix + content
-                prompts.append((task_id, prompt))
-    elif data_file_path.endswith('.parquet'):
-        # 使用当前路径的 field 和 prefix 配置
-        field = path_config['field']
-        prefix = path_config['prefix'] or ""
-        import pandas as pd
-        df = pd.read_parquet(data_file_path)
-        for idx, row in df.iterrows():
-            task_id = row.get(config['key']) if config['key'] else None
-            content = row.get(field, "")
+def _extract_from_jsonl(
+    file_path: str,
+    key: Optional[str],
+    field: str,
+    prefix: str
+) -> List[Tuple[Optional[str], str]]:
+    """从 jsonl 文件中提取 (task_id, prompt) 的列表。"""
+    import jsonlines
+    prompts = []
+    with jsonlines.open(file_path) as reader:
+        for obj in reader:
+            task_id = obj.get(key) if key else None
+            content = obj.get(field, "")
             prompt = prefix + content
             prompts.append((task_id, prompt))
-    elif mode == 'codeRepair':
-        # 特殊处理纯文本文件
-        with open(data_file_path, "r") as file:
-            lines = file.readlines()
-        lines = [line.strip() for line in lines]
-        
-        for i, line in enumerate(lines, start=1):
-            prompt = path_config['prefix'] + line
-            prompts.append((i, prompt))
-    
-  return prompts
+    return prompts
+
+
+def _extract_from_parquet(
+    file_path: str,
+    key: Optional[str],
+    field: str,
+    prefix: str
+) -> List[Tuple[Optional[str], str]]:
+    """从 parquet 文件中提取 (task_id, prompt) 的列表。"""
+    prompts = []
+    df = pd.read_parquet(file_path)
+    for idx, row in df.iterrows():
+        task_id = row.get(key) if key else None
+        content = row.get(field, "")
+        prompt = prefix + content
+        prompts.append((task_id, prompt))
+    return prompts
+
+
+def _extract_from_txt(
+    file_path: str,
+    prefix: str
+) -> List[Tuple[Optional[int], str]]:
+    """从纯文本文件（逐行）提取 (line_number, prompt) 的列表。"""
+    prompts = []
+    with open(file_path, "r", encoding="utf-8") as file:
+        lines = [line.strip() for line in file]
+    for i, line in enumerate(lines, start=1):
+        prompt = prefix + line
+        prompts.append((i, prompt))
+    return prompts
+
+def _extract_from_json(
+    file_path: str,
+    key: Optional[str],
+    field: Optional[str],
+    prefix: str
+) -> List[Tuple[Optional[Any], str]]:
+    """
+    从普通 JSON 文件中提取 (task_id, prompt) 的列表。
+    假设该 JSON 文件的顶层数据是一个列表，每个元素是一个 dict。
+    """
+    import json
+    prompts = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)  # 假设 data 是一个 list[dict]
+        if not isinstance(data, list):
+            raise ValueError(f"Expected a list of objects in JSON file: {file_path}")
+        for obj in data:
+            task_id = obj.get(key) if key else None
+            content = obj.get(field, "")
+            prompt = prefix + content
+            prompts.append((task_id, prompt))
+    return prompts
+
+def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
+    """
+    通用函数，用于从文件中提取Prompts。
+
+    参数:
+        mode (str): 解析模式，可选值：
+            - 'textGen_MBPP': 提取'text'或'prompt'字段。
+            - 'textGen_humaneval': 提取'prompt'字段。
+            - 'codeSummary_CSearchNet': 提取'code'字段，并添加固定前缀。
+            - 'codeRepair': 从纯文本文件逐行读取，并添加固定前缀。
+            - 'line_completion': 提取'input'字段。
+
+        lang (str): 语言标签，例如 'python', 'java' 等。
+
+    返回:
+        List[Tuple[Optional[Any], str]]: 提取的Prompt列表。每个元素为 (task_id或其他标识, prompt)。
+    """
+
+    # 将每种模式的具体配置放在 mode_config 中
+    # file_type: 用于区分使用哪个小函数去读取
+    # path: 文件路径，可以包含 {lang} 占位符
+    # field: 提取的字段（jsonl/parquet）
+    # prefix: 拼接前缀
+    # key: 在数据中用来标识任务ID的字段名；若不需要可以为 None
+
+    mode_config: Dict[str, Dict[str, Any]] = {
+        'textGen_MBPP': {
+            'key': 'task_id',
+            'path_template': [
+                {
+                    'file_type': 'jsonl',
+                    'path': "/newdisk/public/wws/Dataset/mbpp/{lang}/mbpp.jsonl",
+                    'field': 'text',
+                    'prefix': ""
+                },
+                {
+                    'file_type': 'parquet',
+                    'path': "/newdisk/public/wws/Dataset/mbpp/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
+                    'field': 'prompt',
+                    'prefix': ""
+                }
+            ]
+        },
+        'textGen_humaneval': {
+            'key': 'task_id',
+            'path_template': [
+                {
+                    'file_type': 'jsonl',
+                    'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl",
+                    'field': 'prompt',
+                    'prefix': ""
+                },
+                {
+                    'file_type': 'parquet',
+                    'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
+                    'field': 'prompt',
+                    'prefix': ""
+                }
+            ]
+        },
+        'codeSummary_CSearchNet': {
+            'key': 'repo',
+            'path_template': [
+                {
+                    'file_type': 'jsonl',
+                    'path': "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/{lang}/test.jsonl",
+                    'field': 'code',
+                    'prefix': "Please describe the functionality of the method: "
+                }
+            ]
+        },
+        'codeRepair': {
+            'key': None,
+            'path_template': [
+                {
+                    'file_type': 'txt',
+                    'path': "/newdisk/public/wws/Dataset/code-refinement/data/small/test.buggy-fixed.buggy",
+                    'field': None,  # 不适用
+                    'prefix': "Please fix the bug in the following code: "
+                }
+            ]
+        },
+        'line_completion': {
+            'key': 'id',
+            'path_template': [
+                {
+                    'file_type': 'json',
+                    'path': "/newdisk/public/wws/Dataset/CodeCompletion-line/dataset/{lang}/line_completion/test.json",
+                    'field': 'input',
+                    'prefix': ""
+                }
+            ]
+        }
+    }
+
+    if mode not in mode_config:
+        raise ValueError(
+            f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}"
+        )
+
+    config = mode_config[mode]
+    all_prompts: List[Tuple[Optional[Any], str]] = []
+
+    # 遍历当前模式下的多个文件配置
+    for path_conf in config['path_template']:
+        file_type: str = path_conf['file_type']
+        file_path: str = path_conf['path'].format(lang=lang)
+        key: Optional[str] = config.get('key', None)  # mode-level key
+        field: Optional[str] = path_conf.get('field', None)
+        prefix: str = path_conf.get('prefix', "")
+
+        if not os.path.exists(file_path):
+            print(f"File not found, skip: {file_path}")
+            continue
+
+        print(f"Processing file: {file_path}")
+
+        # 根据 file_type 选择合适的提取函数
+        if file_type == 'jsonl':
+            if not field:
+                raise ValueError("field must be provided for JSONL file.")
+            # 提取并累加
+            prompts = _extract_from_jsonl(file_path, key, field, prefix)
+            all_prompts.extend(prompts)
+
+        elif file_type == 'parquet':
+            if not field:
+                raise ValueError("field must be provided for Parquet file.")
+            prompts = _extract_from_parquet(file_path, key, field, prefix)
+            all_prompts.extend(prompts)
+
+        elif file_type == 'txt':
+            # codeRepair 这种场景：逐行提取
+            prompts = _extract_from_txt(file_path, prefix)
+            all_prompts.extend(prompts)
+
+        elif file_type == 'json':
+            prompts = _extract_from_jsonl(file_path, key, field, prefix)
+            all_prompts.extend(prompts)
+
+        else:
+            print(f"Unknown file_type '{file_type}' in config, skipping: {file_path}")
+
+    return all_prompts
 
 
 # TodoList: analysis_max_token

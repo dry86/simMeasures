@@ -10,6 +10,7 @@ from functools import wraps
 from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_states
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
+from rich import print
 
 PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
 
@@ -306,14 +307,14 @@ if __name__ == "__main__":
 
         for prefix_model_path_idx1 in prefix_model_path_idx1_list:
             for task in tasks:
-                model_idx1 = os.path.basename(prefix_model_path_idx1)
+                model_idx1 = os.path.basename(prefix_model_path_idx1)   # 从路径中获取模型名称
                 model_idx2 = os.path.basename(prefix_model_path_idx2)
 
-                model_pair = model_idx2 + "-" + model_idx1
+                model_pair = model_idx2 + "-" + model_idx1  # 模型对名称
                 saver_name = model_pair + f"-{task}"
                 sheet_name = lang
                 saver = ResultSaver(
-                    file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_CKA/{model_pair}/{saver_name}.xlsx", 
+                    file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test/{model_pair}/{saver_name}.xlsx", 
                     sheet=sheet_name)
 
                 # 调用主函数

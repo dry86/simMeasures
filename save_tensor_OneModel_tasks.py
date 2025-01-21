@@ -31,7 +31,7 @@ def get_padding_length_and_prompt(task, tokenizer1, lang, device):
 
     # 获取90%的分位数并四舍五入
     percentile_90 = round(stats.loc['90%', 'length'])
-    print(f"90% percentile for model1: {percentile_90}")
+    print(f"90% percentile for model: {percentile_90}")
     return percentile_90, prompts
 
 def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1, batch_size=1):
@@ -91,7 +91,7 @@ def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1
             accumulated_hidden_states.clear()
             batch_counter = 0
 
-            break # only first 1k
+            # break # only first 1k
         
         del hidden_states, last_token_hidden_states
         torch.cuda.empty_cache()
@@ -105,13 +105,17 @@ def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1
 if __name__ == "__main__":
     """
     how to use:
-        修改以下参数↓↓↓
+    python save_tensor_OneModel_tasks.py
+    output:
+    1. 每个任务的tensor文件, 保存在model_path/pt_file/task/lang/ 下
+    2. 每个任务的tensor文件, 命名为 model_idx_batch_1.pt, model_idx_batch_2.pt, ...
+    注意⛔️:
+        是否 only save first 1k
     """
     # 记录开始时间
     start_time = time.time()  
 
-    # 指定GPU设备
-    device_model = torch.device("cuda:1")
+    device_model = torch.device("cuda:3")
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-tasks.json5'))
