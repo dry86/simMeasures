@@ -3,11 +3,11 @@ import torch
 import pandas as pd
 import collections
 import math
-from typing import List, Tuple, Optional, Dict, Any
+import json
 from openpyxl import load_workbook
+from typing import List, Tuple, Optional, Dict, Any
 from transformers import AutoTokenizer, AutoModelForCausalLM
-
-# TodoList: 数据集的输入 构建一个Class  从类的成员函数中获取模式
+from abc import ABC, abstractmethod
 
 def _extract_from_jsonl(
     file_path: str,
@@ -26,7 +26,6 @@ def _extract_from_jsonl(
             prompts.append((task_id, prompt))
     return prompts
 
-
 def _extract_from_parquet(
     file_path: str,
     key: Optional[str],
@@ -42,7 +41,6 @@ def _extract_from_parquet(
         prompt = prefix + content
         prompts.append((task_id, prompt))
     return prompts
-
 
 def _extract_from_txt(
     file_path: str,
@@ -226,55 +224,52 @@ def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
     return all_prompts
 
 
-# TodoList: analysis_max_token
-
-def combine_names(name1, name2, lang, max_length=31):
-    def shorten_name(name):
-      # 定义名称缩写的条件
-      if "codeLlama-7b" in name:
-          return name.replace("codeLlama-7b", "cL7b")
-      elif "dsc-7b-base-v1.5" in name:
-          return name.replace("dsc-7b-base-v1.5", "dsc7b")
-      elif "Qwen2.5-Coder-7B" in name:
-          return name.replace("Qwen2.5-Coder-7B", "QwC7b")
-      # elif "codeShell-7b" in name:
-      #     return name.replace("codeShell-7b", "cSh7b")
-      # 根据需要添加更多缩写规则
-      return name  # 如果不符合任何条件，返回原始名称
-
-    # 依次缩写每个名称
-    name1_short = shorten_name(name1)
-    name2_short = shorten_name(name2)
-    # name3_short = shorten_name(name3)
-    
-    combined_name = f"{name1_short} vs {name2_short} {lang}"
-    
-    # 如果缩写后的名称仍然超长，进行截取
-    if len(combined_name) > max_length:
-        combined_name = lang
-    
-    return combined_name
-
-# 定义模型加载函数
-def load_model_and_tokenizer(model_path: str, device: torch.device):
+class BaseResultSaver(ABC):
     """
-    加载预训练的模型和分词器，并将模型加载到指定设备上。
+    抽象基类，定义 print_and_save 接口和 save_result 接口。
+    子类需实现 save_result 方法。
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        pad_token_id=tokenizer.pad_token_id,
-        torch_dtype=torch.float32
-    ).to(device)
-    return model, tokenizer
+    def __init__(self, file_path, sheet=None, model1=None, model2=None):
+        self.file_path = file_path
+        self.sheet = sheet  # 对于 JSONL/Parquet 可忽略或不使用
+        # 在初始化时对 (model1, model2) 做排序，存成 self.m1, self.m2
+        if model1 and model2:
+            self.m1, self.m2 = self.canonical_pair(model1, model2)
+        else:
+            self.m1, self.m2 = None, None
 
-class ResultSaver:
-    def __init__(self, sheet, file_name):
-        self.file_name = file_name
-        self.sheet = sheet
+    def print_and_save(self, cal_method, score, row):
+        # 统一的打印逻辑
+        print(f"\t{cal_method}: {score}")
+        # 调用子类实现的保存逻辑
+        self.save_result(cal_method, score, row)
 
-    # 定义保存到Excel的函数，支持指定工作表
-    def save_to_excel(self, cal_method, score, row):
+    @abstractmethod
+    def print_and_save(self, metrics_dict, row):
+        pass
+
+    # @abstractmethod
+    # def save_result(self, cal_method, score, row):
+    #     """
+    #     子类需实现的保存逻辑
+    #     """
+    #     pass
+
+    @property
+    def canonical_pair(m1, m2):
+        return tuple(sorted([m1, m2]))
+
+
+class ExcelResultSaver(BaseResultSaver):
+    """
+    将数据追加到 Excel 文件中的指定工作表。
+        如果文件不存在，创建新文件并写入数据。
+        如果文件已存在，将数据追加到指定工作表。
+    """
+    def __init__(self, file_path, sheet="Sheet1"):
+        super().__init__(file_path, sheet)
+
+    def save_result(self, cal_method, score, row):
         file_name = self.file_name
         sheet = self.sheet
 
@@ -330,7 +325,7 @@ class ResultSaver:
 
             # 保存工作簿
             book.save(file_name)
-        
+    
     # 打印并保存计算结果的函数
     def print_and_save(self, cal_method, score, row):
         # 打印结果
@@ -338,6 +333,136 @@ class ResultSaver:
         
         # 调用函数保存数据到指定工作表中
         self.save_to_excel(cal_method, score, row + 1)
+
+
+class JsonlResultSaver(BaseResultSaver):
+    """
+    将数据以 JSON Lines 方式追加写入，每条记录占一行。
+    """
+    def __init__(self, file_path, model1, model2):
+        super().__init__(file_path, model1, model2)
+
+    def print_and_save(self, metrics_dict, row):
+        print(f"Metrics for row={row}:")
+        for k, v in metrics_dict.items():
+            print(f"\t{k} = {v}")
+
+        # 组装一个 record（一条JSON）
+        record = {
+            "model1": self.m1,
+            "model2": self.m2,
+            "row": row,
+        }
+        record.update(metrics_dict)  # 把 metrics_dict 的KV也加入
+
+        # 追加写入
+        directory = os.path.dirname(self.file_path)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
+
+        with open(self.file_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+class ParquetResultSaver(BaseResultSaver):
+    """
+    将 (model1, model2) 在构造函数中规范化，
+    然后每次将结果追加到同一个 Parquet 文件。
+    """
+    def __init__(self, file_path, model1, model2):
+        super().__init__(file_path, model1, model2)
+
+    def print_and_save(self, metrics_dict, row):
+        """
+        metrics_dict: 例如 {
+            "RSMNormDiff": 0.123,
+            "RSA": 0.456,
+            "CKA": 0.789,
+            ...
+        }
+        row: 你用于标识的行号或某个ID
+        """
+        # 1) 打印所有指标
+        print(f"Metrics for row={row}:")
+        for k, v in metrics_dict.items():
+            print(f"\t{k} = {v}")
+
+        # 2) 构建 DataFrame（仅一行），包含 model1, model2, row, 以及各指标
+        data_dict = {
+            "model1": [self.m1],
+            "model2": [self.m2],
+            "row": [row],
+        }
+        # 把 metrics_dict 的每个键值也放入 data_dict
+        for metric_name, metric_value in metrics_dict.items():
+            data_dict[metric_name] = [metric_value]
+
+        df_new = pd.DataFrame(data_dict)
+
+        # 3) 如果文件已存在，则读出来和 df_new 做 concat
+        if os.path.exists(self.file_path):
+            df_existing = pd.read_parquet(self.file_path)
+        else:
+            df_existing = pd.DataFrame()
+
+        # 这里可以选择是否做重复检查：如果 (m1,m2,row) 已经存在就更新或跳过
+        # 简单示例：跳过写入
+        # is_dup = (
+        #     (df_existing["model1"] == self.m1) & 
+        #     (df_existing["model2"] == self.m2) & 
+        #     (df_existing["row"] == row)
+        # )
+        # if is_dup.any():
+        #     print("Duplicate found, skip writing.")
+        #     return
+
+        # 合并后写回
+        df_updated = pd.concat([df_existing, df_new], ignore_index=True)
+        df_updated.to_parquet(self.file_path, index=False)
+
+
+
+
+def combine_names(name1, name2, lang, max_length=31):
+    def shorten_name(name):
+      # 定义名称缩写的条件
+      if "codeLlama-7b" in name:
+          return name.replace("codeLlama-7b", "cL7b")
+      elif "dsc-7b-base-v1.5" in name:
+          return name.replace("dsc-7b-base-v1.5", "dsc7b")
+      elif "Qwen2.5-Coder-7B" in name:
+          return name.replace("Qwen2.5-Coder-7B", "QwC7b")
+      # elif "codeShell-7b" in name:
+      #     return name.replace("codeShell-7b", "cSh7b")
+      # 根据需要添加更多缩写规则
+      return name  # 如果不符合任何条件，返回原始名称
+
+    # 依次缩写每个名称
+    name1_short = shorten_name(name1)
+    name2_short = shorten_name(name2)
+    # name3_short = shorten_name(name3)
+    
+    combined_name = f"{name1_short} vs {name2_short} {lang}"
+    
+    # 如果缩写后的名称仍然超长，进行截取
+    if len(combined_name) > max_length:
+        combined_name = lang
+    
+    return combined_name
+
+# 定义模型加载函数
+def load_model_and_tokenizer(model_path: str, device: torch.device):
+    """
+    加载预训练的模型和分词器，并将模型加载到指定设备上。
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        pad_token_id=tokenizer.pad_token_id,
+        torch_dtype=torch.float32
+    ).to(device)
+    return model, tokenizer
+
 
 def _get_ngrams(segment, max_order):
   """Extracts all n-grams upto a given maximum order from an input segment.

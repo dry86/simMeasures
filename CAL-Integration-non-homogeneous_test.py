@@ -5,7 +5,7 @@ import json5
 import numpy as np
 from tqdm import tqdm
 from example import cca_core
-from utils import ResultSaver
+from utils import ParquetResultSaver, ExcelResultSaver, JsonlResultSaver
 from functools import wraps
 from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_states
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
@@ -139,11 +139,27 @@ def cal_RSM(acts1, acts2, shape, idx, saver):
 
     # saver.print_and_save("RSMNormDiff", calculate_rsm_norm_difference(acts1, acts2, shape), idx)
     # saver.print_and_save("RSA", calculate_rsa(acts1, acts2, shape), idx)
-    saver.print_and_save("CKA", calculate_cka(acts1, acts2, shape), idx)
+    # saver.print_and_save("CKA", calculate_cka(acts1, acts2, shape), idx)
     # saver.print_and_save("DisCor", calculate_distance_correlation(acts1, acts2, shape), idx)
     # saver.print_and_save("EOlapScore", calculate_eigenspace_overlap(acts1, acts2, shape), idx)
     # assert K <= n  -> AssertionError
     # saver.print_and_save("Gulp", calculate_gulp(acts1, acts2, shape), idx)
+
+
+    # 1) 先一次性计算所有指标
+    metrics = {
+        "RSMNormDiff": calculate_rsm_norm_difference(acts1, acts2, shape),
+        "RSA": calculate_rsa(acts1, acts2, shape),
+        "CKA": calculate_cka(acts1, acts2, shape),
+        "DisCor": calculate_distance_correlation(acts1, acts2, shape),
+        "EOlapScore": calculate_eigenspace_overlap(acts1, acts2, shape),
+        # ... 你可继续加更多指标
+    }
+
+    # 2) 只调用一次 print_and_save，就能把这几个指标放在同一行里
+    saver.print_and_save(metrics, row=1)
+
+
 
 def cal_Alignment(acts1, acts2, shape, idx, saver):
 
@@ -226,8 +242,23 @@ def calculate_cca(acts1, acts2, shape, idx, saver):
 
 
 
-def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, saver: ResultSaver):
-    """主函数：加载模型、读取数据、计算相似性"""
+def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, save_dir):
+    """主函数：数据存储、加载模型、读取数据、计算相似性"""
+
+    model_pair = model_idx2 + "-" + model_idx1  # 模型对名称
+    saver_name = model_pair + f"-{task}"
+    sheet_name = lang
+    # saver = ExcelResultSaver(
+    #     file_name=f"{save_dir}{model_pair}/{saver_name}.xlsx", 
+    #     sheet=sheet_name)
+
+    saver = ParquetResultSaver(
+        file_path=f"{save_dir}all_models.parquet",
+        model1=model_idx1,
+        model2=model_idx2,
+    )
+
+
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
     pt_model_1 = os.path.join(model1_path, "pt_file", task, lang)   # 
@@ -277,14 +308,11 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:2")  # 第x块GPU
+    device_model1 = torch.device("cuda:3")  # 第x块GPU
     device_model2 = torch.device("cuda:1")  # 第y块GPU
 
     # device_model1 = torch.device("cpu")  # 第x块GPU
     # device_model2 = torch.device("cpu")  # 第y块GPU
-
-    # device_model1 = 'cpu'
-    # device_model2 = 'cpu'
 
     # 参数设置
     configs = json5.load(open(
@@ -310,16 +338,11 @@ if __name__ == "__main__":
                 model_idx1 = os.path.basename(prefix_model_path_idx1)   # 从路径中获取模型名称
                 model_idx2 = os.path.basename(prefix_model_path_idx2)
 
-                model_pair = model_idx2 + "-" + model_idx1  # 模型对名称
-                saver_name = model_pair + f"-{task}"
-                sheet_name = lang
-                saver = ResultSaver(
-                    file_name=f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test/{model_pair}/{saver_name}.xlsx", 
-                    sheet=sheet_name)
+                save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test2/"
 
                 # 调用主函数
                 print(f"Current work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
-                main(task, num_layers_to_select, prefix_model_path_idx1, prefix_model_path_idx2, model_idx1, model_idx2, lang, device_model1, device_model2, saver)
+                main(task, num_layers_to_select, prefix_model_path_idx1, prefix_model_path_idx2, model_idx1, model_idx2, lang, device_model1, device_model2, save_dir)
                 print(f"Finish work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
                 print("-"*50)
                 print("-"*50)
