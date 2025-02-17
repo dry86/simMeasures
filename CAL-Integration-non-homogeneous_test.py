@@ -12,7 +12,7 @@ from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 from rich import print
 
-PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)
@@ -104,7 +104,7 @@ def cal_Neighbors(acts1, acts2, shape, idx, saver):
     score = calculate_joint_rank_jaccard_similarity(acts1, acts2, shape)
     saver.print_and_save("RankJacSim", score, idx)
 
-def cal_RSM(acts1, acts2, shape, idx, saver):
+def cal_RSM(acts1, acts2, shape, idx, metrics_all):
     @time_it
     def calculate_rsm_norm_difference(acts1, acts2, shape):
         rsm_norm_diff = RSMNormDifference()
@@ -153,15 +153,15 @@ def cal_RSM(acts1, acts2, shape, idx, saver):
         "CKA": calculate_cka(acts1, acts2, shape),
         "DisCor": calculate_distance_correlation(acts1, acts2, shape),
         "EOlapScore": calculate_eigenspace_overlap(acts1, acts2, shape),
-        # ... 你可继续加更多指标
+        # ... 更多指标
     }
 
-    # 2) 只调用一次 print_and_save，就能把这几个指标放在同一行里
-    saver.print_and_save(metrics, row=1)
+    metrics_all.update(metrics)
+    
 
 
 
-def cal_Alignment(acts1, acts2, shape, idx, saver):
+def cal_Alignment(acts1, acts2, shape, idx, metrics_all):
 
     @time_it
     def calculate_opcan(acts1, acts2, shape):
@@ -205,14 +205,31 @@ def cal_Alignment(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    saver.print_and_save("OrthProCAN", calculate_opcan(acts1, acts2, shape), idx)
-    saver.print_and_save("OrthAngShape", calculate_asm(acts1, acts2, shape), idx)
-    # saver.print_and_save("LinRegre", calculate_linear_regression(acts1, acts2, shape), idx)
-    saver.print_and_save("AliCosSim", calculate_aligned_cosine_sim(acts1, acts2, shape), idx)
-    saver.print_and_save("SoftCorMatch", calculate_soft_correlation_match(acts1, acts2, shape), idx)
-    saver.print_and_save("HardCorMatch", calculate_hard_correlation_match(acts1, acts2, shape), idx)
-    # saver.print_and_save("PermProc", calculate_permutation_procrustes(acts1, acts2, shape), idx)
-    # saver.print_and_save("ProcDict", calculate_procrustes_size_and_shape_distance(acts1, acts2, shape), idx)
+    # saver.print_and_save("OrthProCAN", calculate_opcan(acts1, acts2, shape), idx)
+    # saver.print_and_save("OrthAngShape", calculate_asm(acts1, acts2, shape), idx)
+    # # saver.print_and_save("LinRegre", calculate_linear_regression(acts1, acts2, shape), idx)
+    # saver.print_and_save("AliCosSim", calculate_aligned_cosine_sim(acts1, acts2, shape), idx)
+    # saver.print_and_save("SoftCorMatch", calculate_soft_correlation_match(acts1, acts2, shape), idx)
+    # saver.print_and_save("HardCorMatch", calculate_hard_correlation_match(acts1, acts2, shape), idx)
+    # # saver.print_and_save("PermProc", calculate_permutation_procrustes(acts1, acts2, shape), idx)
+    # # saver.print_and_save("ProcDict", calculate_procrustes_size_and_shape_distance(acts1, acts2, shape), idx)
+
+    # 1) 先一次性计算所有指标
+    metrics = {
+        "OrthProCAN": calculate_opcan(acts1, acts2, shape),
+        "OrthAngShape": calculate_asm(acts1, acts2, shape),
+        # "LinRegre": calculate_linear_regression(acts1, acts2, shape),
+        "AliCosSim": calculate_aligned_cosine_sim(acts1, acts2, shape),
+        "SoftCorMatch": calculate_soft_correlation_match(acts1, acts2, shape),
+        "HardCorMatch": calculate_hard_correlation_match(acts1, acts2, shape),
+        # "PermProc": calculate_permutation_procrustes(acts1, acts2, shape),
+        # "ProcDict": calculate_procrustes_size_and_shape_distance(acts1, acts2, shape),
+        # ... 更多指标
+    }
+
+    # 2) 将所有计算结果追加到 metrics_all 中
+    metrics_all.update(metrics)
+
 
 def calculate_cca(acts1, acts2, shape, idx, saver):
     @time_it
@@ -289,18 +306,22 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
 
         shape = "nd"
 
+        metrics_all = {}
+
         # CCA
         # calculate_cca(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Alignment
-        # cal_Alignment(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        cal_Alignment(acts1_numpy, acts2_numpy, shape, layer_idx, metrics_all)
         # RSM
-        cal_RSM(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        cal_RSM(acts1_numpy, acts2_numpy, shape, layer_idx, metrics_all)
         # Neighbors
         # cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Topology
         # cal_Topology(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Statistic
         # cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+
+        saver.print_and_save(metrics_all, row=i)
 
 
 if __name__ == "__main__":

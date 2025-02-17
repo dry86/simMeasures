@@ -255,8 +255,7 @@ class BaseResultSaver(ABC):
     #     """
     #     pass
 
-    @property
-    def canonical_pair(m1, m2):
+    def canonical_pair(self, m1, m2):
         return tuple(sorted([m1, m2]))
 
 
@@ -267,7 +266,7 @@ class ExcelResultSaver(BaseResultSaver):
         如果文件已存在，将数据追加到指定工作表。
     """
     def __init__(self, file_path, sheet="Sheet1"):
-        super().__init__(file_path, sheet)
+        super().__init__(file_path, sheet=sheet)
 
     def save_result(self, cal_method, score, row):
         file_name = self.file_name
@@ -340,7 +339,7 @@ class JsonlResultSaver(BaseResultSaver):
     将数据以 JSON Lines 方式追加写入，每条记录占一行。
     """
     def __init__(self, file_path, model1, model2):
-        super().__init__(file_path, model1, model2)
+        super().__init__(file_path, model1=model1, model2=model2)
 
     def print_and_save(self, metrics_dict, row):
         print(f"Metrics for row={row}:")
@@ -370,7 +369,7 @@ class ParquetResultSaver(BaseResultSaver):
     然后每次将结果追加到同一个 Parquet 文件。
     """
     def __init__(self, file_path, model1, model2):
-        super().__init__(file_path, model1, model2)
+        super().__init__(file_path, model1=model1, model2=model2)
 
     def print_and_save(self, metrics_dict, row):
         """
