@@ -175,7 +175,7 @@ def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
 
     if mode not in mode_config:
         raise ValueError(
-            f"Invalid mode: {mode}. Available modes: {list(mode_config.keys())}"
+            f"Invalid Task mode: {mode}. Available modes: {list(mode_config.keys())}"
         )
 
     config = mode_config[mode]
@@ -371,7 +371,7 @@ class ParquetResultSaver(BaseResultSaver):
     def __init__(self, file_path, model1, model2):
         super().__init__(file_path, model1=model1, model2=model2)
 
-    def print_and_save(self, metrics_dict, row):
+    def print_and_save(self, metrics_dict, task, row):
         """
         metrics_dict: 例如 {
             "RSMNormDiff": 0.123,
@@ -390,6 +390,7 @@ class ParquetResultSaver(BaseResultSaver):
         data_dict = {
             "model1": [self.m1],
             "model2": [self.m2],
+            "task": [task],
             "row": [row],
         }
         # 把 metrics_dict 的每个键值也放入 data_dict

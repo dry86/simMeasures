@@ -26,7 +26,7 @@ def time_it(func):
         return result
     return wrapper
 
-def cal_Statistic(acts1, acts2, shape, idx, saver):
+def cal_Statistic(acts1, acts2, shape, idx, metrics_all):
 
     @time_it
     def calculate_magnitude_difference(acts1, acts2, shape):
@@ -45,14 +45,16 @@ def cal_Statistic(acts1, acts2, shape, idx, saver):
 
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    score = calculate_magnitude_difference(acts1, acts2, shape)
-    saver.print_and_save("MagDiff", score, idx)
+    # 1) 先一次性计算所有指标
+    metrics = {
+        "MagDiff": calculate_magnitude_difference(acts1, acts2, shape),
+        "ConDiff": calculate_concentricity_difference(acts1, acts2, shape),
+        "UniDiff": calculate_uniformity_difference(acts1, acts2, shape),
+        # ... 可以扩展更多的统计度量
+    }
 
-    score = calculate_concentricity_difference(acts1, acts2, shape)
-    saver.print_and_save("ConDiff", score, idx)
-
-    score = calculate_uniformity_difference(acts1, acts2, shape)
-    saver.print_and_save("UniDiff", score, idx)
+    # 2) 将所有计算结果追加到 metrics_all 中
+    metrics_all.update(metrics)
 
 def cal_Topology(acts1, acts2, shape, idx, saver):
 
@@ -68,7 +70,7 @@ def cal_Topology(acts1, acts2, shape, idx, saver):
     score = calculate_imd_score(acts1, acts2, shape)
     saver.print_and_save("IMD", score, idx)
 
-def cal_Neighbors(acts1, acts2, shape, idx, saver):
+def cal_Neighbors(acts1, acts2, shape, idx, metrics_all):
 
     @time_it
     def calculate_jaccard_similarity(acts1, acts2, shape):
@@ -89,20 +91,18 @@ def cal_Neighbors(acts1, acts2, shape, idx, saver):
     def calculate_joint_rank_jaccard_similarity(acts1, acts2, shape):
         return joint_rank_jaccard_similarity(acts1, acts2, shape)
 
-    # 主体逻辑
     print(f"Layer {idx}, acts1 shape: {acts1.shape}:")
 
-    score = calculate_jaccard_similarity(acts1, acts2, shape)
-    saver.print_and_save("JacSim", score, idx)
+    # 1) 先一次性计算所有指标
+    metrics = {
+        "JacSim": calculate_jaccard_similarity(acts1, acts2, shape),
+        "SecOrdCosSim": calculate_second_order_cosine_similarity(acts1, acts2, shape),
+        "RankSim": calculate_rank_similarity(acts1, acts2, shape),
+        "RankJacSim": calculate_joint_rank_jaccard_similarity(acts1, acts2, shape)
+    }
 
-    score = calculate_second_order_cosine_similarity(acts1, acts2, shape)
-    saver.print_and_save("SecOrdCosSim", score, idx)
-
-    score = calculate_rank_similarity(acts1, acts2, shape)
-    saver.print_and_save("RankSim", score, idx)
-
-    score = calculate_joint_rank_jaccard_similarity(acts1, acts2, shape)
-    saver.print_and_save("RankJacSim", score, idx)
+    # 2) 将所有计算结果追加到 metrics_all 中
+    metrics_all.update(metrics)
 
 def cal_RSM(acts1, acts2, shape, idx, metrics_all):
     @time_it
@@ -158,9 +158,6 @@ def cal_RSM(acts1, acts2, shape, idx, metrics_all):
 
     metrics_all.update(metrics)
     
-
-
-
 def cal_Alignment(acts1, acts2, shape, idx, metrics_all):
 
     @time_it
@@ -270,12 +267,10 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     #     sheet=sheet_name)
 
     saver = ParquetResultSaver(
-        file_path=f"{save_dir}all_models.parquet",
+        file_path=f"{save_dir}/all_models.parquet",
         model1=model_idx1,
         model2=model_idx2,
     )
-
-
 
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
     pt_model_1 = os.path.join(model1_path, "pt_file", task, lang)   # 
@@ -315,13 +310,13 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
         # RSM
         cal_RSM(acts1_numpy, acts2_numpy, shape, layer_idx, metrics_all)
         # Neighbors
-        # cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        cal_Neighbors(acts1_numpy, acts2_numpy, shape, layer_idx, metrics_all)
         # Topology
         # cal_Topology(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
         # Statistic
-        # cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, saver)
+        cal_Statistic(acts1_numpy, acts2_numpy, shape, layer_idx, metrics_all)
 
-        saver.print_and_save(metrics_all, row=i)
+        saver.print_and_save(metrics_all, task=task, row=i)
 
 
 if __name__ == "__main__":
@@ -338,6 +333,8 @@ if __name__ == "__main__":
     # 参数设置
     configs = json5.load(open(
         '/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
+
+    save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test2"
 
     for config in configs:
         task = config.get('task')
@@ -358,8 +355,6 @@ if __name__ == "__main__":
             for task in tasks:
                 model_idx1 = os.path.basename(prefix_model_path_idx1)   # 从路径中获取模型名称
                 model_idx2 = os.path.basename(prefix_model_path_idx2)
-
-                save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test2/"
 
                 # 调用主函数
                 print(f"Current work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
