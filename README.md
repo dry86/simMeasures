@@ -1,55 +1,75 @@
+# 神经网络表征相似度度量工具
+
+## 项目简介
+这是一个用于计算和分析不同神经网络模型表征相似度的工具集。该项目实现了多种相似度度量方法，可以用来比较不同模型的隐藏层表征之间的关系。
+
+## 主要功能
+该项目主要用于计算不同模型的隐藏层表征之间的相似度，包含以下几个主要模块：
+
+### 1. 统计特征比较 (cal_Statistic)
+- 幅度差异度量 (Magnitude Difference)
+- 同心度差异度量 (Concentricity Difference)
+- 均匀度差异度量 (Uniformity Difference)
+
+### 2. 拓扑结构分析 (cal_Topology)
+- IMD分数计算 (IMD Score)
+
+### 3. 邻域关系分析 (cal_Neighbors)
+- Jaccard相似度
+- 二阶余弦相似度
+- 排序相似度
+- 联合排序Jaccard相似度
+
+### 4. 表征相似度矩阵分析 (cal_RSM)
+- RSM范数差异
+- 表征相似度分析 (RSA)
+- 中心核对齐 (CKA)
+- 距离相关性
+- 特征空间重叠分数
+- GULP分析
+
+### 5. 对齐分析 (cal_Alignment)
+- 正交Procrustes中心化归一化
+- 正交角度形状度量
+- 线性回归
+- 对齐余弦相似度
+- 软相关匹配
+- 硬相关匹配
+- 置换Procrustes
+- Procrustes大小和形状距离
+
+### 6. CCA相关分析
+- 典型相关分析 (CCA)
+- SVCCA
+- PWCCA
+
+## 项目结构
 
 
+## 使用方法
+1. 在配置文件中设置相关参数：
+   - 任务类型 (task)
+   - 模型路径
+   - 语言设置 (lang)
+   - 需要选择的层数 (num_layers_to_select)
 
-# 使用方法
-
-## 配置参数
-在 `config-non-homogeneous-models.json5` 文件中设置任务、模型路径、语言等参数。
-
-## 运行脚本
-在命令行中运行 `CAL-Integration-non-homogeneous.py` 脚本：
+2. 运行主程序：
 ```bash
 python CAL-Integration-non-homogeneous.py
 ```
 
-## 查看结果
-脚本运行完成后，结果将保存在指定的文件中。
+## 技术特点
+- 支持多种相似度度量方法
+- 可以灵活配置比较的模型层数
+- 结果自动保存为Excel等格式
+- 使用装饰器实现运行时间统计
 
----
+## 依赖库
+- torch
+- numpy
+- json5
+- tqdm
+- rich
+- repsim
 
-# 代码结构
 
-## 主函数
-- **main函数**：负责加载模型、读取数据、计算相似性并保存结果。
-
-## 相似性度量函数
-- **cal_RSM函数**：计算 RSM 相关的相似性度量。
-- **cal_Topology函数**：计算拓扑相关的相似性度量。
-- **cal_Alignment函数**：计算对齐相关的相似性度量。
-- **cal_Statistic函数**：计算统计相关的相似性度量。
-- **cal_Neighbors函数**：计算近邻相关的相似性度量。
-
-## 辅助函数
-如以下函数用于具体的相似性度量计算：
-- `calculate_rsm_norm_difference`
-- `calculate_rsa`
-- `calculate_cka`
-
----
-
-# 示例
-
-运行以下命令：
-```bash
-python CAL-Integration-non-homogeneous.py
-```
-
----
-
-# 注意事项
-
-1. 确保所有依赖库已正确安装。
-2. 配置文件中的路径和参数应根据实际情况进行调整。
-3. 如果遇到性能问题，可以考虑：
-    - 使用 GPU 加速。
-    - 优化代码逻辑。
