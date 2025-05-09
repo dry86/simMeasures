@@ -6,6 +6,7 @@ import pandas as pd
 from transformers import AutoTokenizer
 from utils import extract_prompts
 from getHiddenStates import load_model, tokens_get_hidden_states
+import numpy as np
 
 def get_padding_length_and_prompt(task, tokenizer1, lang, device):
 
@@ -26,18 +27,16 @@ def get_padding_length_and_prompt(task, tokenizer1, lang, device):
         token1.append(inputs_model1['input_ids'].cpu().numpy())
 
     lengths1 = [len(seq[0]) for seq in token1]
-    stats = pd.DataFrame(lengths1, columns=['length']).describe(percentiles=[0.9,0.95])
-    # print(stats)
 
-    # 获取90%的分位数并四舍五入
-    percentile_90 = round(stats.loc['90%', 'length'])
+    # 使用numpy的percentile函数直接计算90%分位数
+    percentile_90 = round(np.percentile(lengths1, 90))
     print(f"90% percentile for model: {percentile_90}")
     return percentile_90, prompts
 
 def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1, batch_size=1):
 
     # 加载模型和tokenizer
-    # model, tokenizer1 = load_model(model1_path, device1)
+    # model, tokenizer1 = load_model(model1_path, device1)x
 
     # 使用 eos_token 作为 pad_token
     tokenizer1.pad_token = tokenizer1.eos_token
@@ -91,7 +90,7 @@ def main(task, model, tokenizer1, model_idx, padding_len, prompts, lang, device1
             accumulated_hidden_states.clear()
             batch_counter = 0
 
-            # break # only first 1k
+            break # only first 1k
         
         del hidden_states, last_token_hidden_states
         torch.cuda.empty_cache()
@@ -115,7 +114,7 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()  
 
-    device_model = torch.device("cuda:3")
+    device_model = torch.device("cuda:0")
 
     # 参数设置
     configs = json5.load(open('/newdisk/public/wws/simMeasures/config/config-save-tasks.json5'))
@@ -133,7 +132,11 @@ if __name__ == "__main__":
         tasks = config.get('task')
         model_path = config.get('model_path')
         model_idx = os.path.basename(model_path)
+
         langs = config.get('lang')
+        # 确保langs是列表形式
+        if isinstance(langs, str):
+            langs = [langs]
 
         model, tokenizer1 = load_model(model_path, device_model)
         for task in tasks:

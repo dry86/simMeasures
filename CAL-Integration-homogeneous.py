@@ -12,7 +12,7 @@ from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 from rich import print
 
-PRINT_TIMING = True # 通过设置此变量来控制是否打印运行时间
+PRINT_TIMING = False # 通过设置此变量来控制是否打印运行时间
 
 def time_it(func):
     @wraps(func)
@@ -256,7 +256,7 @@ def calculate_cca(acts1, acts2, shape, idx, saver):
 
 
 
-def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, save_dir):
+def main(task, model1_path, model2_path, model_idx1, model_idx2, lang, device1, device2, save_dir):
     """主函数：数据存储、加载模型、读取数据、计算相似性"""
 
     model_pair = model_idx2 + "-" + model_idx1  # 模型对名称
@@ -267,7 +267,7 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     #     sheet=sheet_name)
 
     saver = ParquetResultSaver(
-        file_path=f"{save_dir}/test_1k.parquet",
+        file_path=f"{save_dir}/cal_homogeneous_models.parquet",
         model1=model_idx1,
         model2=model_idx2,
     )
@@ -278,23 +278,20 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     hidden_states_model1 = first_pt_hidden_states(pt_model_1, model_idx1, device1)
     hidden_states_model2 = first_pt_hidden_states(pt_model_2, model_idx2, device2)
 
-    # 选择前num_layers_to_select层和后num_layers_to_select层
-    selected_layers_1 = torch.cat((hidden_states_model1[:num_layers_to_select], hidden_states_model1[-num_layers_to_select:]), dim=0)
-    selected_layers_2 = torch.cat((hidden_states_model2[:num_layers_to_select], hidden_states_model2[-num_layers_to_select:]), dim=0)
+    # # 选择前num_layers_to_select层和后num_layers_to_select层
+    # selected_layers_1 = torch.cat((hidden_states_model1[:num_layers_to_select], hidden_states_model1[-num_layers_to_select:]), dim=0)
+    # selected_layers_2 = torch.cat((hidden_states_model2[:num_layers_to_select], hidden_states_model2[-num_layers_to_select:]), dim=0)
     
-    for i in tqdm(range(2 * num_layers_to_select)):
+    for i in tqdm(range(len(hidden_states_model1))):
         # 获取当前层的隐藏状态
-        layer_hidden_states_1 = selected_layers_1[i]
-        layer_hidden_states_2 = selected_layers_2[i]
+        layer_hidden_states_1 = hidden_states_model1[i]
+        layer_hidden_states_2 = hidden_states_model2[i]
         
         # 转换为numpy数组
         acts1_numpy = layer_hidden_states_1.cpu().numpy()
         acts2_numpy = layer_hidden_states_2.cpu().numpy()
 
         layer_idx = i
-        # 标记后num_layers_to_select层从多少层开始（只在后半部分需要）
-        if i >= num_layers_to_select:
-            layer_idx = i + num_layers_to_select  # 后10层的索引
 
         # if layer_idx < 28:
         #     continue
@@ -332,9 +329,10 @@ if __name__ == "__main__":
 
     # 参数设置
     configs = json5.load(open(
-        '/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
+        '/newdisk/public/wws/simMeasures/config/config-homogeneous-models.json5'
+    ))    # M
 
-    save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test2"
+    save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_homogeneous_models"
 
     for config in configs:
         task = config.get('task')
@@ -349,7 +347,6 @@ if __name__ == "__main__":
         prefix_model_path_idx1_list = config.get('prefix_model_path_idx1')
         prefix_model_path_idx2 = config.get('prefix_model_path_idx2')
         lang = config.get('lang')
-        num_layers_to_select = config.get('num_layers_to_select')
 
         for prefix_model_path_idx1 in prefix_model_path_idx1_list:
             for task in tasks:
@@ -358,7 +355,7 @@ if __name__ == "__main__":
 
                 # 调用主函数
                 print(f"Current work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
-                main(task, num_layers_to_select, prefix_model_path_idx1, prefix_model_path_idx2, model_idx1, model_idx2, lang, device_model1, device_model2, save_dir)
+                main(task, prefix_model_path_idx1, prefix_model_path_idx2, model_idx1, model_idx2, lang, device_model1, device_model2, save_dir)
                 print(f"Finish work: {task}, Model: {model_idx2}, {model_idx1}, lang: {lang}")
                 print("-"*50)
                 print("-"*50)

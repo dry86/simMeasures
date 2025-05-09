@@ -4,8 +4,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # 加载模型
 def load_model(model_name, device):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, return_dict_in_generate=True, output_hidden_states=True)    # return_dict_in_generate=True,
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name, return_dict_in_generate=True, output_hidden_states=True, trust_remote_code=True)    # return_dict_in_generate=True,
     model = model.to(device)  # 将模型移动到指定的GPU上
     return model, tokenizer
 
@@ -17,7 +17,7 @@ def get_batch_number(filename, keyword):
     """从文件名中提取批次号，例如 'hsm1_batch_19.pt' 提取出 19"""
     return int(filename.split(f"{keyword}batch_")[-1].split('.pt')[0])
 
-def only_first_pt_hidden_states(directory, keyword, device):
+def first_pt_hidden_states(directory, keyword, device):
     """加载第一块.pt文件的隐藏状态张量"""
     # 找到以“1.pt”结尾的文件
     pt_files = [filename for filename in os.listdir(directory) if filename.startswith(keyword) and filename.endswith('_1.pt')]

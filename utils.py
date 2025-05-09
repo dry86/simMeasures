@@ -371,7 +371,7 @@ class ParquetResultSaver(BaseResultSaver):
     def __init__(self, file_path, model1, model2):
         super().__init__(file_path, model1=model1, model2=model2)
 
-    def print_and_save(self, metrics_dict, task, row):
+    def print_and_save(self, metrics_dict, task, language, layer):
         """
         metrics_dict: 例如 {
             "RSMNormDiff": 0.123,
@@ -379,19 +379,20 @@ class ParquetResultSaver(BaseResultSaver):
             "CKA": 0.789,
             ...
         }
-        row: 你用于标识的行号或某个ID
+        layer: 用于标识的层号或某个ID
         """
         # 1) 打印所有指标
-        print(f"Metrics for row={row}:")
-        for k, v in metrics_dict.items():
-            print(f"\t{k} = {v}")
+        # print(f"Metrics for layer={layer}:")
+        # for k, v in metrics_dict.items():
+        #     print(f"\t{k} = {v}")
 
-        # 2) 构建 DataFrame（仅一行），包含 model1, model2, row, 以及各指标
+        # 2) 构建 DataFrame（仅一行），包含 model1, model2, layer, 以及各指标
         data_dict = {
             "model1": [self.m1],
             "model2": [self.m2],
             "task": [task],
-            "row": [row],
+            "lang": [language],
+            "layer": [layer],
         }
         # 把 metrics_dict 的每个键值也放入 data_dict
         for metric_name, metric_value in metrics_dict.items():

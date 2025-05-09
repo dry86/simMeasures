@@ -7,7 +7,7 @@ from tqdm import tqdm
 from example import cca_core
 from utils import ParquetResultSaver, ExcelResultSaver, JsonlResultSaver
 from functools import wraps
-from getHiddenStates import concatenate_hidden_states, first_pt_hidden_states
+from getHiddenStates import concatenate_hidden_states, only_first_pt_hidden_states
 from repsim.measures.nearest_neighbor import joint_rank_jaccard_similarity
 from repsim.measures import *
 from rich import print
@@ -267,7 +267,7 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     #     sheet=sheet_name)
 
     saver = ParquetResultSaver(
-        file_path=f"{save_dir}/test_1k.parquet",
+        file_path=f"{save_dir}/test_all_pt.parquet",
         model1=model_idx1,
         model2=model_idx2,
     )
@@ -275,8 +275,12 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
     # 获取隐藏层输出, shape (batch_size, max_length, hidden_size)
     pt_model_1 = os.path.join(model1_path, "pt_file", task, lang)   # 
     pt_model_2 = os.path.join(model2_path, "pt_file", task, lang)
-    hidden_states_model1 = first_pt_hidden_states(pt_model_1, model_idx1, device1)
-    hidden_states_model2 = first_pt_hidden_states(pt_model_2, model_idx2, device2)
+    hidden_states_model1 = concatenate_hidden_states(pt_model_1, model_idx1, device1)
+    hidden_states_model2 = concatenate_hidden_states(pt_model_2, model_idx2, device2)
+
+    # 将列表转换为张量
+    hidden_states_model1 = torch.stack(hidden_states_model1)
+    hidden_states_model2 = torch.stack(hidden_states_model2)
 
     # 选择前num_layers_to_select层和后num_layers_to_select层
     selected_layers_1 = torch.cat((hidden_states_model1[:num_layers_to_select], hidden_states_model1[-num_layers_to_select:]), dim=0)
@@ -294,7 +298,7 @@ def main(task, num_layers_to_select, model1_path, model2_path, model_idx1, model
         layer_idx = i
         # 标记后num_layers_to_select层从多少层开始（只在后半部分需要）
         if i >= num_layers_to_select:
-            layer_idx = i + num_layers_to_select  # 后10层的索引
+            layer_idx = i + num_layers_to_select  # 后10层的索引 todo： 需要修改 -10, -9, .., -1层
 
         # if layer_idx < 28:
         #     continue
@@ -324,8 +328,8 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:3")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:2")  # 第y块GPU
 
     # device_model1 = torch.device("cpu")  # 第x块GPU
     # device_model2 = torch.device("cpu")  # 第y块GPU
