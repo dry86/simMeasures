@@ -126,13 +126,13 @@ def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
             'path_template': [
                 {
                     'file_type': 'jsonl',
-                    'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl",
+                    'path': "/root/projects/00-Model-Code/00-Dataset/humaneval-x-main/data/{lang}/data/humaneval.jsonl",
                     'field': 'prompt',
                     'prefix': ""
                 },
                 {
                     'file_type': 'parquet',
-                    'path': "/newdisk/public/wws/Dataset/humaneval-x-main/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
+                    'path': "/root/projects/00-Model-Code/00-Dataset/humaneval-x-main/data_MultiPL-E/{lang}/test-00000-of-00001.parquet",
                     'field': 'prompt',
                     'prefix': ""
                 }

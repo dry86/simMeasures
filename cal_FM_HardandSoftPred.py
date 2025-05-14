@@ -17,7 +17,7 @@ def load_model_and_tokenizer(model_path: str, device: torch.device):
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         pad_token_id=tokenizer.pad_token_id,
-        torch_dtype=torch.float32
+        torch_dtype='auto'
     ).to(device)
     return model, tokenizer
 

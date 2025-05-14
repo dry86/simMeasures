@@ -321,18 +321,18 @@ if __name__ == "__main__":
     # 记录开始时间
     start_time = time.time()    
 
-    device_model1 = torch.device("cuda:3")  # 第x块GPU
-    device_model2 = torch.device("cuda:1")  # 第y块GPU
+    device_model1 = torch.device("cuda:0")  # 第x块GPU
+    device_model2 = torch.device("cuda:0")  # 第y块GPU
 
     # device_model1 = torch.device("cpu")  # 第x块GPU
     # device_model2 = torch.device("cpu")  # 第y块GPU
 
     # 参数设置
     configs = json5.load(open(
-        '/newdisk/public/wws/simMeasures/config/config-homogeneous-models.json5'
+        '/root/projects/simMeasures/config/config-homogeneous-models.json5'
     ))    # M
 
-    save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_homogeneous_models"
+    save_dir = f"/root/projects/simMeasures/results/final_strategy_homogeneous_models"
 
     for config in configs:
         task = config.get('task')

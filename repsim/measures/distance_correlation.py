@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn.metrics
 import torch
-from loguru import logger
+# from loguru import logger
 from repsim.measures.utils import double_center
 from repsim.measures.utils import flatten
 from repsim.measures.utils import RSMSimilarityMeasure
