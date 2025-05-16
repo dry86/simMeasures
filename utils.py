@@ -4,10 +4,65 @@ import pandas as pd
 import collections
 import math
 import json
+from PIL import Image
 from openpyxl import load_workbook
 from typing import List, Tuple, Optional, Dict, Any
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from abc import ABC, abstractmethod
+
+
+class VLModel(ABC):
+    def __init__(self, model_path, device):
+        self.model_path = model_path
+        self.device = device
+
+    @abstractmethod
+    def load_model(self):
+        pass
+
+    @abstractmethod
+    def get_hidden_states(self, image_path: str, text: str):
+        pass
+
+class QwenVLModel(VLModel):
+    def load_model(self):
+        from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.model_path, torch_dtype="auto"
+        ).to(self.device).eval()
+        self.processor = AutoProcessor.from_pretrained(self.model_path)
+
+    def get_hidden_states(self, image_path: str, text: str):
+        image = Image.open(image_path)
+        conversation = [
+            {
+                "role": "user",
+                "content": [{"type": "image"}, {"type": "text", "text": text}],
+            }
+        ]
+        prompt = self.processor.apply_chat_template(conversation, add_generation_prompt=True)
+        inputs = self.processor(text=[prompt], images=[image], return_tensors="pt").to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(**inputs, output_hidden_states=True, return_dict=True)
+
+        last_non_pad_idx = inputs['attention_mask'].sum(dim=1) - 1
+        hidden_states = [
+            layer[0, last_non_pad_idx, :].squeeze().cpu() for layer in outputs.hidden_states
+        ]
+        return hidden_states
+
+MODEL_REGISTRY = {
+    "qwen_vl": QwenVLModel,
+    # "blip2": Blip2Model,
+    # 添加更多模型名和类的映射
+}
+
+def get_model_class(model_type: str):
+    if model_type not in MODEL_REGISTRY:
+        raise ValueError(f"Unsupported model type: {model_type}")
+    return MODEL_REGISTRY[model_type]
+
 
 def _extract_from_jsonl(
     file_path: str,
