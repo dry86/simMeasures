@@ -12,8 +12,9 @@ from abc import ABC, abstractmethod
 def _extract_from_jsonl(
     file_path: str,
     key: Optional[str],
-    field: str,
-    prefix: str
+    field: Optional[str],
+    prefix: str,
+    mode: Optional[str] = None
 ) -> List[Tuple[Optional[str], str]]:
     """从 jsonl 文件中提取 (task_id, prompt) 的列表。"""
     import jsonlines
@@ -21,8 +22,27 @@ def _extract_from_jsonl(
     with jsonlines.open(file_path) as reader:
         for obj in reader:
             task_id = obj.get(key) if key else None
-            content = obj.get(field, "")
-            prompt = prefix + content
+            if mode == "NLP_MRPC":
+                text1 = obj.get("text1", "")
+                text2 = obj.get("text2", "")
+                prompt = (
+                    f"Sentence 1: {text1}\n"
+                    f"Sentence 2: {text2}\n"
+                    "Question: Do the two sentences have the same meaning (are they paraphrases)?\n"
+                    "Answer:"
+                )
+            elif mode == "NLP_MNLI":
+                text1 = obj.get("text1", "")
+                text2 = obj.get("text2", "")
+                prompt = (
+                    f"Premise: {text1}\n"
+                    f"Hypothesis: {text2}\n"
+                    "Question: Does the premise entail the hypothesis, contradict it, or are they neutral?\n"
+                    "Answer:"
+                )
+            else:
+                content = obj.get(field, "")
+                prompt = prefix + content
             prompts.append((task_id, prompt))
     return prompts
 
@@ -30,7 +50,8 @@ def _extract_from_parquet(
     file_path: str,
     key: Optional[str],
     field: str,
-    prefix: str
+    prefix: str,
+    mode: Optional[str] = None
 ) -> List[Tuple[Optional[str], str]]:
     """从 parquet 文件中提取 (task_id, prompt) 的列表。"""
     prompts = []
@@ -38,7 +59,10 @@ def _extract_from_parquet(
     for idx, row in df.iterrows():
         task_id = row.get(key) if key else None
         content = row.get(field, "")
-        prompt = prefix + content
+        if mode == "NLP_SST2":
+            prompt = f"Review: {content}\nQuestion: Is the sentiment of the above review positive or negative?\nAnswer:"
+        else:
+            prompt = prefix + content
         prompts.append((task_id, prompt))
     return prompts
 
@@ -170,7 +194,40 @@ def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
                     'prefix': ""
                 }
             ]
-        }
+        },
+        'NLP_SST2': {
+            'key': 'idx',
+            'path_template': [
+                {
+                    'file_type': 'parquet',
+                    'path': "/root/projects/00-Model/00-Dataset/sst2/data/test-00000-of-00001.parquet",
+                    'field': 'sentence',
+                    'prefix': ""
+                }
+            ]
+        },
+        'NLP_MRPC': {
+            'key': 'idx',
+            'path_template': [
+                {
+                    'file_type': 'jsonl',
+                    'path': "/root/projects/00-Model/00-Dataset/mrpc/test.jsonl",
+                    'field': None,  # 不用单字段
+                    'prefix': ""
+                }
+            ]
+        },
+        'NLP_MNLI': {
+            'key': 'idx',
+            'path_template': [
+                {
+                    'file_type': 'jsonl',
+                    'path': "/root/projects/00-Model/00-Dataset/mnli/test_matched.jsonl",
+                    'field': None,  # 不用单字段
+                    'prefix': ""
+                }
+            ]
+        },
     }
 
     if mode not in mode_config:
@@ -197,16 +254,13 @@ def extract_prompts(mode: str, lang: str) -> List[Tuple[Optional[Any], str]]:
 
         # 根据 file_type 选择合适的提取函数
         if file_type == 'jsonl':
-            if not field:
-                raise ValueError("field must be provided for JSONL file.")
             # 提取并累加
-            prompts = _extract_from_jsonl(file_path, key, field, prefix)
+            prompts = _extract_from_jsonl(file_path, key, field, prefix, mode=mode)
             all_prompts.extend(prompts)
 
         elif file_type == 'parquet':
-            if not field:
-                raise ValueError("field must be provided for Parquet file.")
-            prompts = _extract_from_parquet(file_path, key, field, prefix)
+
+            prompts = _extract_from_parquet(file_path, key, field, prefix, mode=mode)
             all_prompts.extend(prompts)
 
         elif file_type == 'txt':

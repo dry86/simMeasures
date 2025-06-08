@@ -117,7 +117,7 @@ if __name__ == "__main__":
     device_model = torch.device("cuda:0")
 
     # 参数设置
-    configs = json5.load(open('/root/projects/simMeasures/config/config-save-tasks.json5'))
+    configs = json5.load(open('/root/projects/simMeasures/config/config-save-tasks-NLP.json5'))
 
     for config in configs:
         task = config.get('task')
