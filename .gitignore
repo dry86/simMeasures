@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 /pt_file/
 /results/
+/VL_Model/
+/VL_Task/
 /config/
 # /pyplot/
 # !/pyplot/

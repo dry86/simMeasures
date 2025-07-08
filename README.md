@@ -65,6 +65,12 @@ python CAL-Integration-non-homogeneous.py
 - 结果自动保存为Parquet、Excel等格式
 - 使用装饰器实现运行时间统计
 
+## 支持任务
+- 支持代码、NLP、多模态、三大模型任务
+   - 代码任务：humaneval、mbpp、CodeCompletion、CodesearchNet、CodeRefinement
+   - NLP任务：SST2、MRPC、MNLI
+   - 多模态任务：VQAv2、Flickr30k、FHM
+
 ## 依赖库
 - torch
 - numpy
