@@ -54,9 +54,28 @@
    - 语言设置 (lang)
    - 需要选择的层数 (num_layers_to_select)
 
+```json
+// 在当前文件夹新建config文件夹，配置
+    // homogeneous config
+    {
+        "task": ["textGen_humaneval", "textGen_MBPP", "codeSummary_CSearchNet", "line_completion"],
+        "lang": "python",
+        "prefix_model_path_idx1": ["/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-1.5B"],
+        "prefix_model_path_idx2": "/newdisk/public/wws/model_dir/Qwen2.5-Coder/Qwen2.5-Coder-1.5B-Instruct"
+    },
+    // non-homogeneous config
+    {
+        "task": ["textGen_humaneval", "textGen_MBPP", "codeSummary_CSearchNet", "line_completion"],
+        "lang": "python",
+        "num_layers_to_select": 10, // 对于 non-homogeneous 非同源模型需要此参数
+        "prefix_model_path_idx1": ["/newdisk/public/wws/model_dir/codellama/codeLlama-7b-Python"],
+        "prefix_model_path_idx2": "/newdisk/public/wws/model_dir/MagiCoder/magicoder-CL-7b"
+    },
+```
+
 2. 运行主程序：
 ```bash
-python CAL-Integration-non-homogeneous.py
+python CAL-Integration-non-homogeneous_all_pt.py
 ```
 
 ## 技术特点

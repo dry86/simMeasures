@@ -336,9 +336,9 @@ if __name__ == "__main__":
 
     # 参数设置
     configs = json5.load(open(
-        '/newdisk/public/wws/simMeasures/config/config-non-homogeneous-models.json5'))    # M
+        'simMeasures/config/config-non-homogeneous-models.json5'))    # M
 
-    save_dir = f"/newdisk/public/wws/simMeasures/results/final_strategy_non_homogeneous_models_test2"
+    save_dir = f"simMeasures/results/final_strategy_non_homogeneous_models"
 
     for config in configs:
         task = config.get('task')

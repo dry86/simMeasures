@@ -21,19 +21,21 @@ class VLModel(ABC):
         pass
 
     @abstractmethod
-    def get_hidden_states(self, image_path: str, text: str):
+    def get_hidden_states(self, image, text: str):
         pass
 
 class QwenVLModel(VLModel):
     def load_model(self):
         from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
-            self.model_path, torch_dtype="auto"
+            self.model_path, 
+            torch_dtype=torch.bfloat16, 
+            trust_remote_code=True
         ).to(self.device).eval()
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def get_hidden_states(self, image_path: str, text: str):
-        image = Image.open(image_path)
+    def get_hidden_states(self, image, text: str):
+        # image = Image.open(image)
         conversation = [
             {
                 "role": "user",
@@ -51,9 +53,161 @@ class QwenVLModel(VLModel):
             layer[0, last_non_pad_idx, :].squeeze().cpu() for layer in outputs.hidden_states
         ]
         return hidden_states
+    
+class InternVLModel(VLModel):
+    """
+    适配 OpenGVLab / InternVL1.5 / 2.5 / 3 系列 MLLM 的封装，
+    用法与 QwenVLModel 一致：`get_hidden_states(PIL.Image | np.ndarray, str)` ➜ List[Tensor]
+    """
+    def load_model(self):
+        from transformers import AutoModelForCausalLM, AutoProcessor
+
+        # 1) 加载权重 & 放到 device；使用 bfloat16 而不是 "auto" 来避免兼容性问题
+        self.model = (
+            AutoModelForCausalLM
+            .from_pretrained(
+                self.model_path, 
+                torch_dtype=torch.bfloat16, 
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
+            )
+            .to(self.device)
+            .eval()
+        )
+
+        # 2) 处理器同时负责 tokenizer + image_processor + chat_template
+        self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
+
+    def get_hidden_states(self, image, text: str):
+        """
+        :param image:  可传 pathlib.Path / str / PIL.Image.Image / np.ndarray
+        :param text:   对图片的提问或指令
+        :return:       List[torch.Tensor]，长度 = 层数 + 1（含 embed），元素 shape=(hidden_size,)
+        """
+        # -- Step-1  构造对话 dict（InternVL 使用与 Qwen2-VL 相同的 chat 模版） --
+        conversation = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},                      # 图像占位
+                    {"type": "text", "text": text},         # 用户问题
+                ],
+            }
+        ]
+        prompt = self.processor.apply_chat_template(
+            conversation, add_generation_prompt=True
+        )
+
+        # -- Step-2  文本 + 图像 一起喂给 processor 得到张量 --
+        inputs = self.processor(
+            text=[prompt],
+            images=[image],                # 支持路径 / PIL.Image / OpenCV ndarray
+            return_tensors="pt"
+        ).to(self.device)
+
+        # -- Step-3  前向并取隐藏层 --
+        with torch.no_grad():
+            outputs = self.model(
+                **inputs,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+
+        # 取每条序列最后一个非 PAD token 对应位置的隐藏表示（和 Qwen 保持一致）
+        last_non_pad_idx = inputs["attention_mask"].sum(dim=1) - 1
+        hidden_states = [
+            layer[0, last_non_pad_idx, :].squeeze().cpu()
+            for layer in outputs.hidden_states
+        ]
+        return hidden_states
+
+
+# class InternVLModel(VLModel):
+#     """
+#     适配 OpenGVLab / InternVL1.5 / 2.5 / 3 系列 MLLM 的封装，
+#     用法与 QwenVLModel 一致：`get_hidden_states(PIL.Image | np.ndarray, str)` ➜ List[Tensor]
+#     """
+#     def load_model(self):
+#         from transformers import AutoModel, AutoProcessor
+
+#         self.model = (
+#             AutoModel.
+#             from_pretrained(self.model_path, 
+#                             torch_dtype=torch.bfloat16,
+#                             low_cpu_mem_usage=True,
+#                             trust_remote_code=True)
+#             .to(self.device)
+#             .eval()
+#         )
+
+#         # 2) 处理器同时负责 tokenizer + image_processor + chat_template
+#         self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
+
+#     def get_hidden_states(self, image, text: str):
+#         """
+#         :param image:  可传 pathlib.Path / str / PIL.Image.Image / np.ndarray
+#         :param text:   对图片的提问或指令
+#         :return:       List[torch.Tensor]，长度 = 层数 + 1（含 embed），元素 shape=(hidden_size,)
+#         """
+#         # -- Step-1  构造对话 dict（InternVL 使用与 Qwen2-VL 相同的 chat 模版） --
+#         # conversation = [
+#         #     {
+#         #         "role": "user",
+#         #         "content": [
+#         #             {"type": "image"},                      # 图像占位
+#         #             {"type": "text", "text": text},         # 用户问题
+#         #         ],
+#         #     }
+#         # ]
+#         conversation = [
+#             {
+#                 "role": "user",
+#                 "content": f"<image>\n{text}"
+#             }
+#         ]      
+#         # prompt = self.processor.apply_chat_template(
+#         #     conversation, 
+#         #     add_generation_prompt=True,
+#         #     tokenize=True,
+#         #     return_dict=True,
+#         #     return_tensors="pt"
+#         # ).to(self.device)
+
+#         # prompt["pixel_values"] = self.processor.image_processor(
+#         #     images=[image],return_tensors="pt").pixel_values.to(self.device)
+
+#         # -- Step-2  文本 + 图像 一起喂给 processor 得到张量 --
+#         prompt = self.processor.apply_chat_template(
+#             conversation, 
+#             add_generation_prompt=True,
+#             tokenize=False
+#         )
+#         inputs = self.processor(
+#             text=prompt,
+#             images=image,                # 支持路径 / PIL.Image / OpenCV ndarray
+#             return_tensors="pt"
+#         ).to(self.device)
+
+#         # -- Step-3  前向并取隐藏层 --
+#         with torch.no_grad():
+#             outputs = self.model(
+#                 **inputs,
+#                 output_hidden_states=True,
+#                 return_dict=True,
+#             )
+
+#         # 取每条序列最后一个非 PAD token 对应位置的隐藏表示（和 Qwen 保持一致）
+#         last_non_pad_idx = inputs["attention_mask"].sum(dim=1) - 1
+#         hidden_states = [
+#             layer[0, last_non_pad_idx, :].squeeze().cpu()
+#             for layer in outputs.hidden_states
+#         ]
+#         return hidden_states
+
 
 MODEL_REGISTRY = {
     "qwen_vl": QwenVLModel,
+    "intern_vl": InternVLModel,
     # "blip2": Blip2Model,
     # 添加更多模型名和类的映射
 }
@@ -478,34 +632,6 @@ class ParquetResultSaver(BaseResultSaver):
 
 
 
-
-def combine_names(name1, name2, lang, max_length=31):
-    def shorten_name(name):
-      # 定义名称缩写的条件
-      if "codeLlama-7b" in name:
-          return name.replace("codeLlama-7b", "cL7b")
-      elif "dsc-7b-base-v1.5" in name:
-          return name.replace("dsc-7b-base-v1.5", "dsc7b")
-      elif "Qwen2.5-Coder-7B" in name:
-          return name.replace("Qwen2.5-Coder-7B", "QwC7b")
-      # elif "codeShell-7b" in name:
-      #     return name.replace("codeShell-7b", "cSh7b")
-      # 根据需要添加更多缩写规则
-      return name  # 如果不符合任何条件，返回原始名称
-
-    # 依次缩写每个名称
-    name1_short = shorten_name(name1)
-    name2_short = shorten_name(name2)
-    # name3_short = shorten_name(name3)
-    
-    combined_name = f"{name1_short} vs {name2_short} {lang}"
-    
-    # 如果缩写后的名称仍然超长，进行截取
-    if len(combined_name) > max_length:
-        combined_name = lang
-    
-    return combined_name
-
 # 定义模型加载函数
 def load_model_and_tokenizer(model_path: str, device: torch.device):
     """
@@ -605,20 +731,3 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
 
   return (bleu, precisions, bp, ratio, translation_length, reference_length)
 
-
-if __name__ == "__main__":
-    # 示例使用
-  # saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics")
-  # pwcca_mean = 0.1575322875319305  # 这是一个示例值
-  # saver.print_and_save("PWCCA similarity", pwcca_mean, row=1)
-
-  # pwcca_mean = 0.897656342134534
-  # saver.print_and_save("PWCCA similarity", pwcca_mean, row=2)
-  # saver = ResultSaver(file_name="/newdisk/public/wws/simMeasures/results/codellama_7b_and_7b_python/test.xlsx", sheet="Metrics1")
-  # # 示例添加另一个cal_method
-  # cosine_sim = 0.789456123456789
-  # saver.print_and_save("Cosine similarity", cosine_sim, row=1)
-
-  data_file_path = "/newdisk/public/wws/Dataset/CodeSearchNet/dataset/java/test.jsonl"
-  prompts = extract_prompts(data_file_path, mode='codeSummary_CSearchNet', prompt_prefix="Please describe the functionality of the method: ")
-  print(prompts[1])
